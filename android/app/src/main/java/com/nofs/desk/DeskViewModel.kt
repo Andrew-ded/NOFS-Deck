@@ -1,0 +1,73 @@
+package com.nofs.desk
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.nofs.desk.data.DeskCommand
+import com.nofs.desk.data.DeskDataSource
+import com.nofs.desk.data.DeskSettings
+import com.nofs.desk.data.DeskState
+import com.nofs.desk.data.FakeDeskDataSource
+import com.nofs.desk.data.SettingsStore
+import com.nofs.desk.net.Discovery
+import com.nofs.desk.net.DiscoveredAgent
+import com.nofs.desk.net.WebSocketDeskDataSource
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+/**
+ * Держит источник данных и отдаёт StateFlow<DeskState> в UI.
+ * Источник выбирается настройками: демо (FakeDeskDataSource)
+ * или ПК (WebSocketDeskDataSource). UI и модели не зависят от выбора.
+ */
+class DeskViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val _state = MutableStateFlow(DeskState())
+    val state: StateFlow<DeskState> = _state
+
+    private val _settings = MutableStateFlow(SettingsStore.load(app))
+    val settings: StateFlow<DeskSettings> = _settings
+
+    private var source: DeskDataSource? = null
+    private var mirrorJob: Job? = null
+
+    init {
+        rebuildSource()
+    }
+
+    private fun rebuildSource() {
+        mirrorJob?.cancel()
+        source?.stop()
+
+        val s = _settings.value
+        val newSource: DeskDataSource = if (s.demoMode) {
+            FakeDeskDataSource(viewModelScope)
+        } else {
+            WebSocketDeskDataSource(viewModelScope, s.host, s.port)
+        }
+        source = newSource
+        mirrorJob = viewModelScope.launch {
+            newSource.state.collect { _state.value = it }
+        }
+    }
+
+    fun send(command: DeskCommand) {
+        source?.send(command)
+    }
+
+    fun applySettings(newSettings: DeskSettings) {
+        SettingsStore.save(getApplication(), newSettings)
+        _settings.value = newSettings
+        rebuildSource()
+    }
+
+    /** UDP-автопоиск агента; null — не найден. */
+    suspend fun discoverAgent(): DiscoveredAgent? = Discovery.discover()
+
+    override fun onCleared() {
+        source?.stop()
+        super.onCleared()
+    }
+}

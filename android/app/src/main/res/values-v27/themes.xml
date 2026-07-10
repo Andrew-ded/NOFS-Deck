@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.NOFSDesk" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F6F4F0</item>
+        <item name="android:statusBarColor">#F6F4F0</item>
+        <item name="android:navigationBarColor">#F6F4F0</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>

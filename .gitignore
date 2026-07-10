@@ -1,0 +1,86 @@
+# ================================
+# Общие для IDE и ОС
+# ================================
+
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ================================
+# Visual Studio / .NET (C#)
+# ================================
+
+# Результаты сборки
+bin/
+obj/
+publish/
+*.user
+*.userprefs
+*.suo
+*.cache
+*.tmp
+*.log
+*.pidb
+*.psess
+*.vsp
+*.vspx
+*.sln.docstates
+
+# Папки пакетов NuGet
+packages/
+*.nupkg
+
+# Папка для локальных инструментов .NET
+.dotnet/
+tools/
+
+# Папка Rider / VS Code
+.idea/
+.vs/
+.vscode/
+
+# ================================
+# Android / Jetpack Compose (Kotlin)
+# ================================
+
+# Файлы Gradle и сборки
+.gradle/
+build/
+*/build/
+captures/
+*.apk
+*.ap_
+*.dex
+*.class
+
+# Локальные свойства (например, путь к SDK)
+local.properties
+
+# Файлы Android Studio
+*.iml
+.idea/
+.gradle/
+.externalNativeBuild
+.cxx/
+ndk-bundle/
+cmake-build-debug/
+cmake-build-release/
+
+# Кэш Kotlin
+.kotlin/
+
+# ================================
+# Логи и временные файлы
+# ================================
+
+*.log
+*.tmp
+*.temp
+*.cache
+*.pid
+*.seed
+*.pid.lock
+

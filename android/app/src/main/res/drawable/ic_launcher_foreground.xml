@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Скруглённая тёмная плашка -->
+    <path
+        android:fillColor="#2B2B28"
+        android:pathData="M34,38 h40 a8,8 0 0 1 8,8 v16 a8,8 0 0 1 -8,8 h-40 a8,8 0 0 1 -8,-8 v-16 a8,8 0 0 1 8,-8 z" />
+    <!-- Три пастельные полоски-метрики -->
+    <path android:fillColor="#BBD1BC" android:pathData="M34,46 h18 a2,2 0 0 1 0,4 h-18 a2,2 0 0 1 0,-4 z" />
+    <path android:fillColor="#F2C9AE" android:pathData="M34,52 h28 a2,2 0 0 1 0,4 h-28 a2,2 0 0 1 0,-4 z" />
+    <path android:fillColor="#B8CFE3" android:pathData="M34,58 h12 a2,2 0 0 1 0,4 h-12 a2,2 0 0 1 0,-4 z" />
+</vector>

@@ -1,0 +1,56 @@
+{
+  "port": 48484,
+  "discoveryPort": 48485,
+  "repoPath": "W:\\Project\\Android\\QualityMobile",
+  "github": {
+    "repo": "",
+    "token": ""
+  },
+  "apps": [
+    { "id": "word",       "label": "Word",           "icon": "doc",     "process": "WINWORD",  "path": "winword.exe" },
+    { "id": "powerpoint", "label": "PowerPoint",     "icon": "slides",  "process": "POWERPNT", "path": "powerpnt.exe" },
+    { "id": "excel",      "label": "Excel",          "icon": "table",   "process": "EXCEL",    "path": "excel.exe" },
+    { "id": "rider",      "label": "Rider",          "icon": "code",    "process": "rider64",  "path": "" },
+    { "id": "studio",     "label": "Android Studio", "icon": "android", "process": "studio64", "path": "" },
+    { "id": "chrome",     "label": "Chrome",         "icon": "browser", "process": "chrome",   "path": "chrome.exe" }
+  ],
+  "macros": [
+    { "id": "screenshot", "label": "Скриншот",    "icon": "screenshot", "accent": "SKY",      "action": "keys:win+printscreen" },
+    { "id": "terminal",   "label": "Терминал",    "icon": "terminal",   "accent": "SAND",     "action": "run:wt.exe" },
+    { "id": "files",      "label": "Проводник",   "icon": "files",      "accent": "SKY",      "action": "run:explorer.exe" },
+    { "id": "night",      "label": "Ночной свет", "icon": "night",      "accent": "LAVENDER", "action": "run:ms-settings:nightlight" },
+    { "id": "mute",       "label": "Тишина",      "icon": "mute",       "accent": "PEACH",    "action": "mute" },
+    { "id": "lock",       "label": "Блокировка",  "icon": "lock",       "accent": "ROSE",     "action": "lock" },
+    { "id": "sleep",      "label": "Сон ПК",      "icon": "sleep",      "accent": "LAVENDER", "action": "sleep" },
+
+    { "id": "word.save",    "label": "Сохранить",    "icon": "save",   "accent": "SKY",      "action": "keys:ctrl+s", "app": "word" },
+    { "id": "word.saveas",  "label": "Сохранить как","icon": "save",   "accent": "LAVENDER", "action": "keys:f12",    "app": "word" },
+    { "id": "word.print",   "label": "Печать",       "icon": "print",  "accent": "SAND",     "action": "keys:ctrl+p", "app": "word" },
+    { "id": "word.new",     "label": "Новый док",    "icon": "add",    "accent": "SAGE",     "action": "keys:ctrl+n", "app": "word" },
+
+    { "id": "ppt.save",     "label": "Сохранить",    "icon": "save",   "accent": "SKY",      "action": "keys:ctrl+s",       "app": "powerpoint" },
+    { "id": "ppt.show",     "label": "Показ с начала","icon": "play",  "accent": "SAGE",     "action": "keys:f5",           "app": "powerpoint" },
+    { "id": "ppt.showcur",  "label": "Показ отсюда", "icon": "play",   "accent": "PEACH",    "action": "keys:shift+f5",     "app": "powerpoint" },
+    { "id": "ppt.newslide", "label": "Новый слайд",  "icon": "add",    "accent": "LAVENDER", "action": "keys:ctrl+m",       "app": "powerpoint" },
+
+    { "id": "excel.save",   "label": "Сохранить",    "icon": "save",   "accent": "SKY",      "action": "keys:ctrl+s",        "app": "excel" },
+    { "id": "excel.print",  "label": "Печать",       "icon": "print",  "accent": "SAND",     "action": "keys:ctrl+p",        "app": "excel" },
+    { "id": "excel.filter", "label": "Фильтр",       "icon": "filter", "accent": "SAGE",     "action": "keys:ctrl+shift+l",  "app": "excel" },
+    { "id": "excel.sheet",  "label": "Новый лист",   "icon": "add",    "accent": "LAVENDER", "action": "keys:shift+f11",     "app": "excel" },
+
+    { "id": "rider.build",  "label": "Собрать",      "icon": "build",  "accent": "SAGE",     "action": "keys:ctrl+f9",       "app": "rider" },
+    { "id": "rider.run",    "label": "Запуск",       "icon": "play",   "accent": "SKY",      "action": "keys:shift+f10",     "app": "rider" },
+    { "id": "rider.debug",  "label": "Отладка",      "icon": "debug",  "accent": "PEACH",    "action": "keys:shift+f9",      "app": "rider" },
+    { "id": "rider.find",   "label": "Поиск",        "icon": "search", "accent": "SAND",     "action": "keys:ctrl+shift+f",  "app": "rider" },
+
+    { "id": "studio.build", "label": "Собрать",      "icon": "build",  "accent": "SAGE",     "action": "keys:ctrl+f9",       "app": "studio" },
+    { "id": "studio.run",   "label": "Запуск",       "icon": "play",   "accent": "SKY",      "action": "keys:shift+f10",     "app": "studio" },
+    { "id": "studio.sync",  "label": "Gradle Sync",  "icon": "sync",   "accent": "PEACH",    "action": "keys:ctrl+shift+o",  "app": "studio" },
+    { "id": "studio.logcat","label": "Logcat",       "icon": "terminal","accent": "SAND",    "action": "keys:alt+6",         "app": "studio" },
+
+    { "id": "chrome.tab",   "label": "Новая вкладка","icon": "tab",       "accent": "SKY",     "action": "keys:ctrl+t",       "app": "chrome" },
+    { "id": "chrome.retab", "label": "Вернуть вкладку","icon": "sync",    "accent": "SAGE",    "action": "keys:ctrl+shift+t", "app": "chrome" },
+    { "id": "chrome.inc",   "label": "Инкогнито",    "icon": "incognito", "accent": "LAVENDER","action": "keys:ctrl+shift+n", "app": "chrome" },
+    { "id": "chrome.dev",   "label": "DevTools",     "icon": "code",      "accent": "SAND",    "action": "keys:f12",          "app": "chrome" }
+  ]
+}
