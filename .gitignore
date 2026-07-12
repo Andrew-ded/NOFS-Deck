@@ -84,3 +84,9 @@ cmake-build-release/
 *.seed
 *.pid.lock
 
+
+# Локальный конфиг агента (содержит токен) — не коммитить
+agent/NofsAgent/config.json
+
+# Локальный конфиг агента (содержит токен) — не коммитить
+agent/NofsAgent/config.json

@@ -1,5 +1,13 @@
 package com.nofs.desk.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,10 +21,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountTree
+import androidx.compose.material.icons.rounded.UnfoldLess
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -39,20 +46,23 @@ import com.nofs.desk.data.DeskCommand
 import com.nofs.desk.ui.components.DeskHeader
 import com.nofs.desk.ui.components.GitPanel
 import com.nofs.desk.ui.components.MacroPanel
+import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
 import com.nofs.desk.ui.components.MiniPlayer
 import com.nofs.desk.ui.components.PlayerSheet
 import com.nofs.desk.ui.components.SettingsDialog
 import com.nofs.desk.ui.components.animatePlayerProgress
+import com.nofs.desk.ui.components.rememberMetricHistory
 import com.nofs.desk.ui.theme.DeskBg
 import com.nofs.desk.ui.theme.DeskCard
 import com.nofs.desk.ui.theme.DeskMuted
 
 /**
  * Сборка экрана: две колонки 1.7 : 1.
- * Слева — шапка + мини-плеер + метрики + контекстные макросы (без скролла).
- * Справа — слот Git-панели (прячется кнопкой, возвращается ручкой у края);
- * чёрный плеер выезжает В ЭТОМ слоте, подменяя её.
+ * Слева — шапка + мини-плеер + метрики + контекстные макросы (без скролла,
+ * сетка адаптивная — при спрятанном Git кнопок в ряду помещается больше).
+ * Справа — слот Git-панели: прячется с анимацией, возвращается круглой
+ * кнопкой у чипа ПК; чёрный плеер выезжает В ЭТОМ слоте, подменяя её.
  */
 @Composable
 fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
@@ -61,8 +71,12 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
 
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var gitVisible by rememberSaveable { mutableStateOf(true) }
+    var metricsCompact by rememberSaveable { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     val playerProgress = animatePlayerProgress(playerOpen)
+
+    // История метрик для спарклайнов — копится всегда
+    val metricHistory = rememberMetricHistory(state.metrics)
 
     // При подключении к ПК сразу просим свежий git-срез
     LaunchedEffect(state.connection) {
@@ -77,7 +91,13 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
         if (!hasMedia && playerOpen) playerOpen = false
     }
 
-    val rightVisible = gitVisible || playerProgress > 0.01f
+    // Правая колонка: плавно схлопывается/разворачивается по весу
+    val rightTarget = if (gitVisible || playerProgress > 0.01f) 1f else 0f
+    val rightWeight by animateFloatAsState(
+        targetValue = rightTarget,
+        animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+        label = "rightWeight"
+    )
 
     Surface(color = DeskBg, modifier = Modifier.fillMaxSize()) {
         Row(
@@ -98,50 +118,89 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                     hostName = state.hostName,
                     connection = state.connection,
                     collapse = 0f,
-                    onSettingsClick = { showSettings = true }
+                    onSettingsClick = { showSettings = true },
+                    showGitButton = !gitVisible,
+                    onGitClick = { gitVisible = true },
+                    afterClock = if (metricsCompact) {
+                        {
+                            MetricSparkStrip(
+                                metrics = state.metrics,
+                                history = metricHistory,
+                                onExpand = { metricsCompact = false }
+                            )
+                        }
+                    } else null
                 )
 
                 Spacer(Modifier.height(8.dp))
 
-                if (hasMedia) {
-                    MiniPlayer(
-                        media = state.media,
-                        playerOpen = playerOpen,
-                        onTogglePlay = { viewModel.send(DeskCommand.TogglePlay) },
-                        onOpenPlayer = { playerOpen = true }
-                    )
-                    Spacer(Modifier.height(12.dp))
+                AnimatedVisibility(
+                    visible = hasMedia,
+                    enter = fadeIn(tween(300)) + expandVertically(tween(300)),
+                    exit = fadeOut(tween(250)) + shrinkVertically(tween(250))
+                ) {
+                    Column {
+                        MiniPlayer(
+                            media = state.media,
+                            playerOpen = playerOpen,
+                            onTogglePlay = { viewModel.send(DeskCommand.TogglePlay) },
+                            onOpenPlayer = { playerOpen = true }
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
                 }
 
-                // Контент чуть сжимается при открытом плеере (упрощение схлопывания)
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .graphicsLayer {
-                            val s = 1f - 0.03f * playerProgress
-                            scaleX = s
-                            scaleY = s
+                Column(Modifier.weight(1f)) {
+                    // Метрики: полная сетка или ничего (в компакте живут у часов)
+                    AnimatedVisibility(
+                        visible = !metricsCompact,
+                        enter = fadeIn(tween(300)) + expandVertically(tween(300)),
+                        exit = fadeOut(tween(250)) + shrinkVertically(tween(250))
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.weight(1f)) {
+                                    MetricsGrid(metrics = state.metrics)
+                                }
+                                Spacer(Modifier.size(6.dp))
+                                // Свернуть метрики в шапку
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .clip(CircleShape)
+                                        .background(DeskCard)
+                                        .clickable { metricsCompact = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.UnfoldLess,
+                                        contentDescription = "Свернуть метрики",
+                                        tint = DeskMuted,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(14.dp))
                         }
-                ) {
-                    MetricsGrid(metrics = state.metrics)
-
-                    Spacer(Modifier.height(14.dp))
+                    }
 
                     MacroPanel(
                         apps = state.apps,
                         macros = state.macros,
                         onAppClick = { viewModel.send(DeskCommand.FocusApp(it)) },
-                        onMacroClick = { viewModel.send(DeskCommand.RunMacro(it)) }
+                        onMacroClick = { viewModel.send(DeskCommand.RunMacro(it)) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            // ---------- Правая колонка: Git-панель / плеер / ручка ----------
-            if (rightVisible) {
+            // ---------- Правая колонка: Git-панель / плеер ----------
+            if (rightWeight > 0.001f) {
                 Box(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(rightWeight)
                         .fillMaxHeight()
+                        .graphicsLayer { alpha = rightWeight }
                 ) {
                     if (gitVisible && playerProgress < 0.99f) {
                         GitPanel(
@@ -168,24 +227,6 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                         onPrev = { viewModel.send(DeskCommand.PrevTrack) },
                         onSeek = { viewModel.send(DeskCommand.Seek(it)) },
                         modifier = Modifier.fillMaxSize()
-                    )
-                }
-            } else {
-                // Узкая ручка у края — вернуть Git-панель
-                Box(
-                    modifier = Modifier
-                        .width(28.dp)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(DeskCard)
-                        .clickable { gitVisible = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.AccountTree,
-                        contentDescription = "Показать Git-панель",
-                        tint = DeskMuted,
-                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

@@ -106,7 +106,92 @@ fun PlayerSheet(
             }
         }
 
-        // Обложка с морфингом
+        // Управление СРАЗУ под шапкой — планшет стоит на столе,
+        // до верхних кнопок дотянуться проще
+        Spacer(Modifier.height(2.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPrev) {
+                Icon(
+                    imageVector = Icons.Rounded.SkipPrevious,
+                    contentDescription = "Предыдущий",
+                    tint = PlayerText,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            Spacer(Modifier.size(12.dp))
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(PlayerCard),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(onClick = onTogglePlay) {
+                    Icon(
+                        imageVector = if (media.isPlaying) Icons.Rounded.Pause
+                        else Icons.Rounded.PlayArrow,
+                        contentDescription = if (media.isPlaying) "Пауза" else "Играть",
+                        tint = PlayerText,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.size(12.dp))
+            IconButton(onClick = onNext) {
+                Icon(
+                    imageVector = Icons.Rounded.SkipNext,
+                    contentDescription = "Следующий",
+                    tint = PlayerText,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // Прогресс + сик
+        val durationFrac =
+            if (media.durationSec > 0) media.positionSec.toFloat() / media.durationSec else 0f
+        var dragging by remember { mutableStateOf(false) }
+        var dragValue by remember { mutableFloatStateOf(0f) }
+        val sliderValue = if (dragging) dragValue else durationFrac.coerceIn(0f, 1f)
+
+        Slider(
+            value = sliderValue,
+            onValueChange = {
+                dragging = true
+                dragValue = it
+            },
+            onValueChangeFinished = {
+                dragging = false
+                onSeek(dragValue)
+            },
+            colors = SliderDefaults.colors(
+                thumbColor = PlayerText,
+                activeTrackColor = PlayerText,
+                inactiveTrackColor = PlayerCard
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(Modifier.fillMaxWidth()) {
+            Text(
+                text = formatTime(media.positionSec),
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetMono),
+                color = PlayerMuted
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = formatTime(media.durationSec),
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetMono),
+                color = PlayerMuted
+            )
+        }
+
+        // Обложка с морфингом — внизу, чисто визуальная зона
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -160,91 +245,6 @@ fun PlayerSheet(
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
-
-        Spacer(Modifier.height(10.dp))
-
-        // Прогресс + сик
-        val durationFrac =
-            if (media.durationSec > 0) media.positionSec.toFloat() / media.durationSec else 0f
-        var dragging by remember { mutableStateOf(false) }
-        var dragValue by remember { mutableFloatStateOf(0f) }
-        val sliderValue = if (dragging) dragValue else durationFrac.coerceIn(0f, 1f)
-
-        Slider(
-            value = sliderValue,
-            onValueChange = {
-                dragging = true
-                dragValue = it
-            },
-            onValueChangeFinished = {
-                dragging = false
-                onSeek(dragValue)
-            },
-            colors = SliderDefaults.colors(
-                thumbColor = PlayerText,
-                activeTrackColor = PlayerText,
-                inactiveTrackColor = PlayerCard
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Row(Modifier.fillMaxWidth()) {
-            Text(
-                text = formatTime(media.positionSec),
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetMono),
-                color = PlayerMuted
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = formatTime(media.durationSec),
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetMono),
-                color = PlayerMuted
-            )
-        }
-
-        Spacer(Modifier.height(6.dp))
-
-        // Управление
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onPrev) {
-                Icon(
-                    imageVector = Icons.Rounded.SkipPrevious,
-                    contentDescription = "Предыдущий",
-                    tint = PlayerText,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-            Spacer(Modifier.size(10.dp))
-            Box(
-                modifier = Modifier
-                    .size(58.dp)
-                    .clip(RoundedCornerShape(percent = 50))
-                    .background(PlayerCard),
-                contentAlignment = Alignment.Center
-            ) {
-                IconButton(onClick = onTogglePlay) {
-                    Icon(
-                        imageVector = if (media.isPlaying) Icons.Rounded.Pause
-                        else Icons.Rounded.PlayArrow,
-                        contentDescription = if (media.isPlaying) "Пауза" else "Играть",
-                        tint = PlayerText,
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
-            }
-            Spacer(Modifier.size(10.dp))
-            IconButton(onClick = onNext) {
-                Icon(
-                    imageVector = Icons.Rounded.SkipNext,
-                    contentDescription = "Следующий",
-                    tint = PlayerText,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-        }
     }
 }
 

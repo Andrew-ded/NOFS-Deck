@@ -2,9 +2,14 @@ package com.nofs.desk.ui.components
 
 import android.graphics.BitmapFactory
 import android.util.Base64
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
@@ -76,7 +82,12 @@ fun DeskHeader(
     hostName: String,
     connection: ConnectionStatus,
     collapse: Float,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    /** Круглая кнопка Git-панели рядом с чипом ПК (видна, когда панель спрятана). */
+    showGitButton: Boolean = false,
+    onGitClick: () -> Unit = {},
+    /** Слот справа от часов — компактные графики метрик. */
+    afterClock: (@Composable () -> Unit)? = null
 ) {
     val clockSize = lerp(56.sp, 26.sp, collapse)
     val vPad by animateDpAsState(
@@ -106,8 +117,38 @@ fun DeskHeader(
                 )
             }
         }
-        Spacer(Modifier.weight(1f))
+        if (afterClock != null) {
+            Spacer(Modifier.width(14.dp))
+            Box(Modifier.weight(1f)) { afterClock() }
+            Spacer(Modifier.width(8.dp))
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
         ConnectionChip(hostName, connection, onSettingsClick)
+        AnimatedVisibility(
+            visible = showGitButton,
+            enter = fadeIn(tween(250)) + expandHorizontally(tween(250)),
+            exit = fadeOut(tween(200)) + shrinkHorizontally(tween(200))
+        ) {
+            Row {
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(DeskCard)
+                        .clickable(onClick = onGitClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AccountTree,
+                        contentDescription = "Показать Git-панель",
+                        tint = DeskMuted,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+            }
+        }
     }
 }
 

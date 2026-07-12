@@ -73,6 +73,13 @@ public sealed class GitService(string initialRepoPath)
     public async Task<string?> PullAsync()
     {
         var err = await GitOpAsync("pull");
+        // Ветка без трекинга — тянем явно из origin
+        if (err != null && err.Contains("no tracking information", StringComparison.OrdinalIgnoreCase))
+        {
+            var branch = await CurrentBranchAsync();
+            if (branch.Length > 0)
+                err = await GitOpAsync($"pull origin \"{branch}\"");
+        }
         if (err == null) MarkSync();
         return err;
     }
@@ -97,8 +104,21 @@ public sealed class GitService(string initialRepoPath)
     public async Task<string?> PushAsync()
     {
         var err = await GitOpAsync("push");
+        // Первый пуш ветки — сами ставим upstream
+        if (err != null && err.Contains("no upstream branch", StringComparison.OrdinalIgnoreCase))
+        {
+            var branch = await CurrentBranchAsync();
+            if (branch.Length > 0)
+                err = await GitOpAsync($"push --set-upstream origin \"{branch}\"");
+        }
         if (err == null) MarkSync();
         return err;
+    }
+
+    private async Task<string> CurrentBranchAsync()
+    {
+        var branch = (await GitAsync("rev-parse --abbrev-ref HEAD")).Trim();
+        return branch == "HEAD" ? "" : branch; // detached HEAD не трогаем
     }
 
     /// <summary>Переключение ветки. Имя проверяется по списку локальных веток.</summary>

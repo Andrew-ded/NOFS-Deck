@@ -1,7 +1,7 @@
 {
   "port": 48484,
   "discoveryPort": 48485,
-  "repoPath": "W:\\Project\\Android\\QualityMobile",
+  "repoPath": "C:\\dev\\MyRepo",
   "github": {
     "repo": "",
     "token": ""

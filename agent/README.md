@@ -47,10 +47,16 @@ netsh advfirewall firewall add rule name="NOFS Desk" dir=in action=allow protoco
   запущено**, активное окно подсвечено; тап — фокус на окно. `process` — имя
   процесса без .exe, `path` — чем запускать, если тапнули по чипу закрытого
   приложения (пусто — не запускать).
-- `macros` — кнопки макросов. `action`:
+- `macros` — кнопки макросов. Поле `app`: пусто — системный макрос (секция
+  «Система» на планшете), иначе id приложения из `apps` — макрос показывается,
+  только когда это приложение в фокусе на ПК (секция «Макросы · Имя»).
+  По умолчанию: хоткеи Word/PowerPoint/Excel (сохранить, печать, показ…),
+  Rider/Android Studio (собрать, запуск, отладка, Gradle Sync, Logcat)
+  и Chrome (вкладки, инкогнито, DevTools). `action`:
   - `run:программа|аргументы` — запуск (`run:wt.exe`, `run:ms-settings:nightlight`,
     `run:C:\dev\proj\gradlew.bat|assembleDebug`);
-  - `keys:комбинация` — клавиши (`keys:win+printscreen`, `keys:ctrl+shift+esc`);
+  - `keys:комбинация` — клавиши (`keys:win+printscreen`, `keys:ctrl+shift+esc`) —
+    уходят в активное окно, поэтому app-макросы шлются только приложению в фокусе;
   - `lock` / `sleep` / `mute` — блокировка / сон / глушение звука.
 
 После правки конфига перезапустить агента (меню трея → Выход).

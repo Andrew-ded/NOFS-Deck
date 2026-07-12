@@ -4,8 +4,13 @@
 агент в трее на ПК. Пастельный флэт, сворачивающаяся шапка, метрики CPU/GPU/RAM,
 контекстные макросы, панель Git/GitHub, чёрный плеер с морфингом обложки.
 
-## Состав
+![alt text](image.png)
 
+![alt text](image-1.png)
+![alt text](image-2.png)
+![alt text](image-3.png)
+
+## Состав
 - `android/` — Android-приложение (Kotlin + Jetpack Compose, `minSdk 26`);
   в Android Studio открывать именно эту папку.
 - `agent/` — агент на ПК (.NET 8, трей): метрики LibreHardwareMonitor,
