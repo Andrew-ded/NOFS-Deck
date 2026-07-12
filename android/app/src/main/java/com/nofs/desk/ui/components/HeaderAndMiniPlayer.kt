@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +58,10 @@ import com.nofs.desk.ui.theme.DeskHandle
 import com.nofs.desk.ui.theme.DeskMuted
 import com.nofs.desk.ui.theme.DeskText
 import com.nofs.desk.ui.theme.JetMono
+import com.nofs.desk.ui.theme.PlayerBg
+import com.nofs.desk.ui.theme.PlayerCard
+import com.nofs.desk.ui.theme.PlayerMuted
+import com.nofs.desk.ui.theme.PlayerText
 import com.nofs.desk.ui.theme.Rose
 import com.nofs.desk.ui.theme.Sage
 import com.nofs.desk.ui.theme.Sand
@@ -190,6 +195,80 @@ private fun ConnectionChip(
             tint = DeskMuted,
             modifier = Modifier.size(16.dp)
         )
+    }
+}
+
+/**
+ * Чёрная пилюля плеера внизу экрана по центру: обложка + трек + play/pause.
+ * Тап по пилюле открывает большой плеер.
+ */
+@Composable
+fun BottomPlayerPill(
+    media: MediaState,
+    onTogglePlay: () -> Unit,
+    onOpenPlayer: () -> Unit
+) {
+    val art = rememberArtBitmap(media.artBase64)
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(26.dp))
+            .background(PlayerBg)
+            .clickable(onClick = onOpenPlayer)
+            .padding(start = 7.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(PlayerCard),
+            contentAlignment = Alignment.Center
+        ) {
+            if (art != null) {
+                Image(
+                    bitmap = art,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(34.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = PlayerMuted,
+                    modifier = Modifier.size(17.dp)
+                )
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.widthIn(max = 220.dp)) {
+            Text(
+                text = media.title,
+                style = MaterialTheme.typography.labelMedium,
+                color = PlayerText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            val sub = media.artist.ifBlank { media.sourceApp }
+            if (sub.isNotBlank()) {
+                Text(
+                    text = sub,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = PlayerMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Spacer(Modifier.width(6.dp))
+        IconButton(onClick = onTogglePlay, modifier = Modifier.size(36.dp)) {
+            Icon(
+                imageVector = if (media.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (media.isPlaying) "Пауза" else "Играть",
+                tint = PlayerText,
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 

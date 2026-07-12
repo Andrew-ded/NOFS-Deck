@@ -7,6 +7,7 @@ import com.nofs.desk.data.ConnectionStatus
 import com.nofs.desk.data.DeskCommand
 import com.nofs.desk.data.DeskDataSource
 import com.nofs.desk.data.DeskState
+import com.nofs.desk.data.ErrorEvent
 import com.nofs.desk.data.GitCommitEntry
 import com.nofs.desk.data.GitHubIssue
 import com.nofs.desk.data.GitHubPullRequest
@@ -204,6 +205,14 @@ class WebSocketDeskDataSource(
                             }
                         )
                     )
+                }
+            }
+            "error" -> {
+                val e = ProtocolJson.decodeFromJsonElement<ErrorMsg>(obj)
+                if (e.message.isNotBlank()) {
+                    _state.update {
+                        it.copy(error = ErrorEvent(e.message, System.currentTimeMillis()))
+                    }
                 }
             }
             "github" -> {

@@ -126,6 +126,9 @@ data class GitHubMsg(
     val issues: List<IssueDto> = emptyList()
 )
 
+@Serializable
+data class ErrorMsg(val message: String = "")
+
 // ---------- планшет -> агент ----------
 
 object Cmd {

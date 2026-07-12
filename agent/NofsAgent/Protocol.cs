@@ -81,6 +81,12 @@ public sealed record GitHubMsg(
     public string Type => "github";
 }
 
+/// <summary>Ошибка операции — показать пользователю на планшете.</summary>
+public sealed record ErrorMsg(string Message)
+{
+    public string Type => "error";
+}
+
 // ---------- планшет -> агент ----------
 
 public sealed class CmdMsg

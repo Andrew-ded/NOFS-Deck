@@ -138,12 +138,23 @@ public sealed class AgentHost : IDisposable
         }
     }
 
-    /// <summary>Долгая git-операция: busy до, свежий снапшот после.</summary>
+    /// <summary>Долгая git-операция: busy до, свежий снапшот после, ошибка — планшету.</summary>
     private async Task GitOpAsync(Func<Task<string?>> op)
     {
         await _server.BroadcastAsync(await _git.SnapshotAsync(busy: true));
-        try { await op(); }
+        try
+        {
+            var err = await op();
+            if (err != null)
+                await _server.BroadcastAsync(new ErrorMsg(Shorten(err)));
+        }
         finally { await _server.BroadcastAsync(await _git.SnapshotAsync()); }
+    }
+
+    private static string Shorten(string text)
+    {
+        var t = text.Trim();
+        return t.Length <= 300 ? t : t[..300] + "…";
     }
 
     /// <summary>Смена репозитория из меню Проводника: переключить, запомнить, разослать.</summary>
@@ -157,6 +168,7 @@ public sealed class AgentHost : IDisposable
         if (!Directory.Exists(Path.Combine(path, ".git")))
         {
             Log.Warn($"set-repo: not a git repo: {path}");
+            await _server.BroadcastAsync(new ErrorMsg($"Папка не является git-репозиторием: {path}"));
             // всё равно переключим — снапшот покажет «нет репо»
         }
 

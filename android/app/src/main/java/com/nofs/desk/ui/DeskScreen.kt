@@ -8,6 +8,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +27,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.UnfoldLess
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,12 +48,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nofs.desk.DeskViewModel
 import com.nofs.desk.data.ConnectionStatus
 import com.nofs.desk.data.DeskCommand
+import com.nofs.desk.ui.components.BottomPlayerPill
 import com.nofs.desk.ui.components.DeskHeader
 import com.nofs.desk.ui.components.GitPanel
 import com.nofs.desk.ui.components.MacroPanel
 import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
-import com.nofs.desk.ui.components.MiniPlayer
 import com.nofs.desk.ui.components.PlayerSheet
 import com.nofs.desk.ui.components.SettingsDialog
 import com.nofs.desk.ui.components.animatePlayerProgress
@@ -56,6 +61,7 @@ import com.nofs.desk.ui.components.rememberMetricHistory
 import com.nofs.desk.ui.theme.DeskBg
 import com.nofs.desk.ui.theme.DeskCard
 import com.nofs.desk.ui.theme.DeskMuted
+import com.nofs.desk.ui.theme.DeskText
 
 /**
  * Сборка экрана: две колонки 1.7 : 1.
@@ -77,6 +83,12 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
 
     // История метрик для спарклайнов — копится всегда
     val metricHistory = rememberMetricHistory(state.metrics)
+
+    // Ошибки от агента — снекбаром внизу
+    val snackbarHost = remember { SnackbarHostState() }
+    LaunchedEffect(state.error) {
+        state.error?.let { snackbarHost.showSnackbar(it.message) }
+    }
 
     // При подключении к ПК сразу просим свежий git-срез
     LaunchedEffect(state.connection) {
@@ -100,6 +112,7 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
     )
 
     Surface(color = DeskBg, modifier = Modifier.fillMaxSize()) {
+      Box(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -133,22 +146,6 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                 )
 
                 Spacer(Modifier.height(8.dp))
-
-                AnimatedVisibility(
-                    visible = hasMedia,
-                    enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-                    exit = fadeOut(tween(250)) + shrinkVertically(tween(250))
-                ) {
-                    Column {
-                        MiniPlayer(
-                            media = state.media,
-                            playerOpen = playerOpen,
-                            onTogglePlay = { viewModel.send(DeskCommand.TogglePlay) },
-                            onOpenPlayer = { playerOpen = true }
-                        )
-                        Spacer(Modifier.height(12.dp))
-                    }
-                }
 
                 Column(Modifier.weight(1f)) {
                     // Метрики: полная сетка или ничего (в компакте живут у часов)
@@ -231,6 +228,37 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                 }
             }
         }
+
+        // Чёрная пилюля плеера — внизу по центру, тап открывает плеер
+        AnimatedVisibility(
+            visible = hasMedia && playerProgress < 0.5f,
+            enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it },
+            exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 10.dp)
+        ) {
+            BottomPlayerPill(
+                media = state.media,
+                onTogglePlay = { viewModel.send(DeskCommand.TogglePlay) },
+                onOpenPlayer = { playerOpen = true }
+            )
+        }
+
+        // Ошибки от агента
+        SnackbarHost(
+            hostState = snackbarHost,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 66.dp)
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = DeskText,
+                contentColor = DeskCard
+            )
+        }
+      }
     }
 
     if (showSettings) {

@@ -92,6 +92,9 @@ data class GitState(
 
 enum class ConnectionStatus { DEMO, CONNECTING, CONNECTED, DISCONNECTED }
 
+/** Ошибка с агента; timestamp — чтобы одинаковые тексты показывались повторно. */
+data class ErrorEvent(val message: String, val at: Long)
+
 data class DeskState(
     val clock: String = "--:--",
     val date: String = "",
@@ -101,7 +104,8 @@ data class DeskState(
     val media: MediaState = MediaState(),
     val macros: List<Macro> = emptyList(),
     val apps: List<AppContext> = emptyList(),
-    val git: GitState = GitState()
+    val git: GitState = GitState(),
+    val error: ErrorEvent? = null
 )
 
 /** Команды планшета к источнику данных. */
