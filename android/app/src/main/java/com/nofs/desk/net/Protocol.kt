@@ -129,6 +129,31 @@ data class GitHubMsg(
 @Serializable
 data class ErrorMsg(val message: String = "")
 
+@Serializable
+data class AudioSessionDto(
+    val id: String,           // имя процесса
+    val label: String,
+    val volume: Float = 1f,   // 0..1
+    val muted: Boolean = false
+)
+
+@Serializable
+data class AudioMsg(
+    val masterVolume: Float = 1f,
+    val masterMuted: Boolean = false,
+    val micMuted: Boolean = false,
+    val sessions: List<AudioSessionDto> = emptyList()
+)
+
+@Serializable
+data class PlaytimeEntryDto(val id: String, val label: String, val seconds: Long)
+
+@Serializable
+data class PlaytimeMsg(
+    val today: List<PlaytimeEntryDto> = emptyList(),
+    val week: List<PlaytimeEntryDto> = emptyList()
+)
+
 // ---------- планшет -> агент ----------
 
 object Cmd {
@@ -154,6 +179,18 @@ object Cmd {
 
     fun gitCheckout(branch: String): JsonObject = buildJsonObject {
         put("type", "cmd"); put("cmd", "gitCheckout"); put("branch", branch)
+    }
+
+    fun audioMaster(volume: Float): JsonObject = buildJsonObject {
+        put("type", "cmd"); put("cmd", "audioMaster"); put("value", volume)
+    }
+
+    fun audioSession(id: String, volume: Float): JsonObject = buildJsonObject {
+        put("type", "cmd"); put("cmd", "audioSession"); put("id", id); put("value", volume)
+    }
+
+    fun audioMuteSession(id: String): JsonObject = buildJsonObject {
+        put("type", "cmd"); put("cmd", "audioMuteSession"); put("id", id)
     }
 }
 

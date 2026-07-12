@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,18 +44,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import com.nofs.desk.DeskViewModel
 import com.nofs.desk.data.ConnectionStatus
 import com.nofs.desk.data.DeskCommand
 import com.nofs.desk.ui.components.BottomPlayerPill
 import com.nofs.desk.ui.components.DeskHeader
-import com.nofs.desk.ui.components.GitPanel
 import com.nofs.desk.ui.components.MacroPanel
 import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
 import com.nofs.desk.ui.components.PlayerSheet
+import com.nofs.desk.ui.components.RightPanel
+import com.nofs.desk.ui.components.Screensaver
 import com.nofs.desk.ui.components.SettingsDialog
 import com.nofs.desk.ui.components.animatePlayerProgress
 import com.nofs.desk.ui.components.rememberMetricHistory
@@ -90,6 +95,21 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
         state.error?.let { snackbarHost.showSnackbar(it.message) }
     }
 
+    // Скринсейвер: бездействие дольше таймаута из настроек — чёрный экран с часами
+    var lastTouch by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var saverActive by remember { mutableStateOf(false) }
+    LaunchedEffect(settings.screensaverMinutes) {
+        while (true) {
+            delay(5_000)
+            val timeoutMs = settings.screensaverMinutes * 60_000L
+            if (settings.screensaverMinutes > 0 && !saverActive &&
+                System.currentTimeMillis() - lastTouch > timeoutMs
+            ) {
+                saverActive = true
+            }
+        }
+    }
+
     // При подключении к ПК сразу просим свежий git-срез
     LaunchedEffect(state.connection) {
         if (state.connection == ConnectionStatus.CONNECTED) {
@@ -112,7 +132,19 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
     )
 
     Surface(color = DeskBg, modifier = Modifier.fillMaxSize()) {
-      Box(Modifier.fillMaxSize()) {
+      Box(
+          Modifier
+              .fillMaxSize()
+              // Любое касание сбрасывает таймер скринсейвера (перехват без поглощения)
+              .pointerInput(Unit) {
+                  awaitPointerEventScope {
+                      while (true) {
+                          awaitPointerEvent(PointerEventPass.Initial)
+                          lastTouch = System.currentTimeMillis()
+                      }
+                  }
+              }
+      ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -200,14 +232,23 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                         .graphicsLayer { alpha = rightWeight }
                 ) {
                     if (gitVisible && playerProgress < 0.99f) {
-                        GitPanel(
+                        RightPanel(
                             git = state.git,
-                            onRefresh = { viewModel.send(DeskCommand.GitRefresh) },
-                            onPull = { viewModel.send(DeskCommand.GitPull) },
-                            onCommit = { viewModel.send(DeskCommand.GitCommit(it)) },
-                            onPush = { viewModel.send(DeskCommand.GitPush) },
-                            onCheckout = { viewModel.send(DeskCommand.GitCheckout(it)) },
+                            audio = state.audio,
+                            playtime = state.playtime,
+                            onGitRefresh = { viewModel.send(DeskCommand.GitRefresh) },
+                            onGitPull = { viewModel.send(DeskCommand.GitPull) },
+                            onGitCommit = { viewModel.send(DeskCommand.GitCommit(it)) },
+                            onGitPush = { viewModel.send(DeskCommand.GitPush) },
+                            onGitCheckout = { viewModel.send(DeskCommand.GitCheckout(it)) },
                             onGitHubRefresh = { viewModel.send(DeskCommand.GitHubRefresh) },
+                            onAudioMaster = { viewModel.send(DeskCommand.AudioMaster(it)) },
+                            onAudioMuteMaster = { viewModel.send(DeskCommand.AudioMuteMaster) },
+                            onAudioMuteMic = { viewModel.send(DeskCommand.AudioMuteMic) },
+                            onAudioSession = { id, v ->
+                                viewModel.send(DeskCommand.AudioSessionVolume(id, v))
+                            },
+                            onAudioMuteSession = { viewModel.send(DeskCommand.AudioMuteSession(it)) },
                             onHide = { gitVisible = false },
                             modifier = Modifier
                                 .fillMaxSize()
@@ -258,6 +299,14 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                 contentColor = DeskCard
             )
         }
+
+        // Скринсейвер поверх всего
+        Screensaver(
+            clock = state.clock,
+            date = state.date,
+            visible = saverActive,
+            onDismiss = { saverActive = false }
+        )
       }
     }
 

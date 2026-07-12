@@ -42,6 +42,7 @@ fun SettingsDialog(
     var demoMode by remember { mutableStateOf(current.demoMode) }
     var host by remember { mutableStateOf(current.host) }
     var portText by remember { mutableStateOf(current.port.toString()) }
+    var saverText by remember { mutableStateOf(current.screensaverMinutes.toString()) }
     var searching by remember { mutableStateOf(false) }
     var searchResult by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -135,6 +136,14 @@ fun SettingsDialog(
                         color = DeskMuted
                     )
                 }
+
+                OutlinedTextField(
+                    value = saverText,
+                    onValueChange = { saverText = it.filter { c -> c.isDigit() } },
+                    label = { Text("Скринсейвер, мин (0 — выкл)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
@@ -143,7 +152,8 @@ fun SettingsDialog(
                     DeskSettings(
                         demoMode = demoMode,
                         host = host.trim(),
-                        port = portText.toIntOrNull() ?: 48484
+                        port = portText.toIntOrNull() ?: 48484,
+                        screensaverMinutes = saverText.toIntOrNull() ?: 10
                     )
                 )
             }) { Text("Применить", color = DeskText) }

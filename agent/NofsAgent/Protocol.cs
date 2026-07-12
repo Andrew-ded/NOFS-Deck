@@ -87,6 +87,23 @@ public sealed record ErrorMsg(string Message)
     public string Type => "error";
 }
 
+public sealed record AudioSessionDto(string Id, string Label, float Volume, bool Muted);
+
+public sealed record AudioMsg(
+    float MasterVolume, bool MasterMuted, bool MicMuted,
+    List<AudioSessionDto> Sessions)
+{
+    public string Type => "audio";
+}
+
+public sealed record PlaytimeEntryDto(string Id, string Label, long Seconds);
+
+public sealed record PlaytimeMsg(
+    List<PlaytimeEntryDto> Today, List<PlaytimeEntryDto> Week)
+{
+    public string Type => "playtime";
+}
+
 // ---------- планшет -> агент ----------
 
 public sealed class CmdMsg

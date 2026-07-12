@@ -48,7 +48,9 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             ),
             macros = demoMacros,
             apps = demoApps,
-            git = demoGit
+            git = demoGit,
+            audio = demoAudio,
+            playtime = demoPlaytime
         )
     )
     override val state: StateFlow<DeskState> = _state
@@ -179,6 +181,25 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             is DeskCommand.GitCheckout -> gitOp { g ->
                 g.copy(branch = command.branch)
             }
+            is DeskCommand.AudioMaster -> _state.update {
+                it.copy(audio = it.audio.copy(masterVolume = command.volume, masterMuted = false))
+            }
+            DeskCommand.AudioMuteMaster -> _state.update {
+                it.copy(audio = it.audio.copy(masterMuted = !it.audio.masterMuted))
+            }
+            DeskCommand.AudioMuteMic -> _state.update {
+                it.copy(audio = it.audio.copy(micMuted = !it.audio.micMuted))
+            }
+            is DeskCommand.AudioSessionVolume -> _state.update { st ->
+                st.copy(audio = st.audio.copy(sessions = st.audio.sessions.map {
+                    if (it.id == command.id) it.copy(volume = command.volume, muted = false) else it
+                }))
+            }
+            is DeskCommand.AudioMuteSession -> _state.update { st ->
+                st.copy(audio = st.audio.copy(sessions = st.audio.sessions.map {
+                    if (it.id == command.id) it.copy(muted = !it.muted) else it
+                }))
+            }
             DeskCommand.GitHubRefresh -> scope.launch {
                 _state.update { it.copy(git = it.git.copy(githubLoading = true)) }
                 delay(700)
@@ -226,6 +247,30 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             Macro("chrome.tab", "Новая вкладка", "tab", AccentTone.SKY, "chrome"),
             Macro("chrome.inc", "Инкогнито", "incognito", AccentTone.LAVENDER, "chrome"),
             Macro("chrome.dev", "DevTools", "code", AccentTone.SAND, "chrome")
+        )
+        val demoAudio = AudioState(
+            masterVolume = 0.65f,
+            masterMuted = false,
+            micMuted = false,
+            sessions = listOf(
+                AudioSession("eldenring", "Elden Ring", 0.8f, false),
+                AudioSession("Discord", "Discord", 0.55f, false),
+                AudioSession("Spotify", "Spotify", 0.3f, false),
+                AudioSession("firefox", "Firefox", 0.7f, true)
+            )
+        )
+        val demoPlaytime = PlaytimeState(
+            today = listOf(
+                PlaytimeEntry("eldenring", "Elden Ring", 5820),
+                PlaytimeEntry("studio64", "Android Studio", 4260),
+                PlaytimeEntry("chrome", "Chrome", 1500)
+            ),
+            week = listOf(
+                PlaytimeEntry("eldenring", "Elden Ring", 41400),
+                PlaytimeEntry("studio64", "Android Studio", 32100),
+                PlaytimeEntry("chrome", "Chrome", 12300),
+                PlaytimeEntry("WINWORD", "Word", 5400)
+            )
         )
         val demoApps = listOf(
             AppContext("studio", "Android Studio", "android", true),

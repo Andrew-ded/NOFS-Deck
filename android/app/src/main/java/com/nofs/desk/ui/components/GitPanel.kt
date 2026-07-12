@@ -27,7 +27,6 @@ import androidx.compose.material.icons.rounded.CallMerge
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Commit
-import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -78,7 +77,6 @@ fun GitPanel(
     onPush: () -> Unit,
     onCheckout: (String) -> Unit,
     onGitHubRefresh: () -> Unit,
-    onHide: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -99,30 +97,20 @@ fun GitPanel(
             .background(DeskCard)
             .padding(16.dp)
     ) {
-        // Таб-свитчер + спрятать панель
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DeskBg)
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                GitTab("Локально", pagerState.currentPage == 0, Modifier.weight(1f)) {
-                    scope.launch { pagerState.animateScrollToPage(0) }
-                }
-                GitTab("GitHub", pagerState.currentPage == 1, Modifier.weight(1f)) {
-                    scope.launch { pagerState.animateScrollToPage(1) }
-                }
+        // Таб-свитчер Локально/GitHub
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(DeskBg)
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            GitTab("Локально", pagerState.currentPage == 0, Modifier.weight(1f)) {
+                scope.launch { pagerState.animateScrollToPage(0) }
             }
-            IconButton(onClick = onHide, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardDoubleArrowRight,
-                    contentDescription = "Спрятать панель",
-                    tint = DeskMuted,
-                    modifier = Modifier.size(18.dp)
-                )
+            GitTab("GitHub", pagerState.currentPage == 1, Modifier.weight(1f)) {
+                scope.launch { pagerState.animateScrollToPage(1) }
             }
         }
 

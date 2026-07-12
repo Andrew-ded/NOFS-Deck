@@ -95,6 +95,30 @@ enum class ConnectionStatus { DEMO, CONNECTING, CONNECTED, DISCONNECTED }
 /** Ошибка с агента; timestamp — чтобы одинаковые тексты показывались повторно. */
 data class ErrorEvent(val message: String, val at: Long)
 
+/** Аудио-сессия приложения на ПК. */
+data class AudioSession(
+    val id: String,            // имя процесса
+    val label: String,
+    val volume: Float,         // 0..1
+    val muted: Boolean
+)
+
+/** Состояние звука ПК: мастер, микрофон, per-app сессии. */
+data class AudioState(
+    val masterVolume: Float = 1f,
+    val masterMuted: Boolean = false,
+    val micMuted: Boolean = false,
+    val sessions: List<AudioSession> = emptyList()
+)
+
+data class PlaytimeEntry(val id: String, val label: String, val seconds: Long)
+
+/** Учёт времени в приложениях/играх (копит агент). */
+data class PlaytimeState(
+    val today: List<PlaytimeEntry> = emptyList(),
+    val week: List<PlaytimeEntry> = emptyList()
+)
+
 data class DeskState(
     val clock: String = "--:--",
     val date: String = "",
@@ -105,6 +129,8 @@ data class DeskState(
     val macros: List<Macro> = emptyList(),
     val apps: List<AppContext> = emptyList(),
     val git: GitState = GitState(),
+    val audio: AudioState = AudioState(),
+    val playtime: PlaytimeState = PlaytimeState(),
     val error: ErrorEvent? = null
 )
 
@@ -122,4 +148,9 @@ sealed interface DeskCommand {
     data class GitCheckout(val branch: String) : DeskCommand
     data object GitPush : DeskCommand
     data object GitHubRefresh : DeskCommand
+    data class AudioMaster(val volume: Float) : DeskCommand
+    data object AudioMuteMaster : DeskCommand
+    data object AudioMuteMic : DeskCommand
+    data class AudioSessionVolume(val id: String, val volume: Float) : DeskCommand
+    data class AudioMuteSession(val id: String) : DeskCommand
 }

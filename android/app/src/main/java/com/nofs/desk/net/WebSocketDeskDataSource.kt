@@ -3,6 +3,10 @@ package com.nofs.desk.net
 import android.util.Log
 import com.nofs.desk.data.AccentTone
 import com.nofs.desk.data.AppContext
+import com.nofs.desk.data.AudioSession
+import com.nofs.desk.data.AudioState
+import com.nofs.desk.data.PlaytimeEntry
+import com.nofs.desk.data.PlaytimeState
 import com.nofs.desk.data.ConnectionStatus
 import com.nofs.desk.data.DeskCommand
 import com.nofs.desk.data.DeskDataSource
@@ -207,6 +211,32 @@ class WebSocketDeskDataSource(
                     )
                 }
             }
+            "audio" -> {
+                val a = ProtocolJson.decodeFromJsonElement<AudioMsg>(obj)
+                _state.update { st ->
+                    st.copy(
+                        audio = AudioState(
+                            masterVolume = a.masterVolume,
+                            masterMuted = a.masterMuted,
+                            micMuted = a.micMuted,
+                            sessions = a.sessions.map {
+                                AudioSession(it.id, it.label, it.volume, it.muted)
+                            }
+                        )
+                    )
+                }
+            }
+            "playtime" -> {
+                val p = ProtocolJson.decodeFromJsonElement<PlaytimeMsg>(obj)
+                _state.update { st ->
+                    st.copy(
+                        playtime = PlaytimeState(
+                            today = p.today.map { PlaytimeEntry(it.id, it.label, it.seconds) },
+                            week = p.week.map { PlaytimeEntry(it.id, it.label, it.seconds) }
+                        )
+                    )
+                }
+            }
             "error" -> {
                 val e = ProtocolJson.decodeFromJsonElement<ErrorMsg>(obj)
                 if (e.message.isNotBlank()) {
@@ -278,6 +308,11 @@ class WebSocketDeskDataSource(
             is DeskCommand.GitCheckout -> Cmd.gitCheckout(command.branch)
             DeskCommand.GitPush -> Cmd.simple("gitPush")
             DeskCommand.GitHubRefresh -> Cmd.simple("githubRefresh")
+            is DeskCommand.AudioMaster -> Cmd.audioMaster(command.volume)
+            DeskCommand.AudioMuteMaster -> Cmd.simple("audioMuteMaster")
+            DeskCommand.AudioMuteMic -> Cmd.simple("audioMuteMic")
+            is DeskCommand.AudioSessionVolume -> Cmd.audioSession(command.id, command.volume)
+            is DeskCommand.AudioMuteSession -> Cmd.audioMuteSession(command.id)
         }
         ws?.send(json.toString())
     }
