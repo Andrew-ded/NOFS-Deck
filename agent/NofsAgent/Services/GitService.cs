@@ -29,13 +29,15 @@ public sealed class GitService(string initialRepoPath)
 
         if (!IsConfigured)
             return new GitMsg("нет репо", 0, 0, 0, false, "",
-                new List<GitLogDto>(), new List<string>(), repoName);
+                new List<GitLogDto>(), new List<string>(), repoName, new List<string>());
 
         var branch = (await GitAsync("rev-parse --abbrev-ref HEAD")).Trim();
         if (string.IsNullOrEmpty(branch)) branch = "—";
 
-        var status = await GitAsync("status --porcelain");
-        var dirty = status.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+        var statusLines = (await GitAsync("status --porcelain"))
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var dirty = statusLines.Length;
+        var changes = statusLines.Take(30).Select(l => l.Trim()).ToList();
 
         int ahead = 0, behind = 0;
         var counts = (await GitAsync("rev-list --left-right --count @{upstream}...HEAD")).Trim();
@@ -65,7 +67,7 @@ public sealed class GitService(string initialRepoPath)
         }
 
         return new GitMsg(branch, dirty, ahead, behind, busy, _lastSync,
-            log, branches, repoName);
+            log, branches, repoName, changes);
     }
 
     // ---------- операции ----------

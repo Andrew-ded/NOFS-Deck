@@ -63,7 +63,9 @@ public sealed record GitLogDto(
 public sealed record GitMsg(
     string Branch, int DirtyFiles, int Ahead, int Behind,
     bool Busy, string LastSync, List<GitLogDto> Log,
-    List<string> Branches, string RepoName)
+    List<string> Branches, string RepoName,
+    /// изменённые файлы ("M path", "?? path") — для диалога коммита
+    List<string> Changes)
 {
     public string Type => "git";
 }

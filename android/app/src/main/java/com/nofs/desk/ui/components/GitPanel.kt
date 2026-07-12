@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -153,6 +154,7 @@ fun GitPanel(
     if (showCommitDialog) {
         CommitDialog(
             dirtyFiles = git.dirtyFiles,
+            changes = git.changes,
             onDismiss = { showCommitDialog = false },
             onConfirm = { msg ->
                 showCommitDialog = false
@@ -555,6 +557,7 @@ private fun EmptyLine(text: String) {
 @Composable
 private fun CommitDialog(
     dirtyFiles: Int,
+    changes: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
@@ -570,13 +573,54 @@ private fun CommitDialog(
             )
         },
         text = {
-            OutlinedTextField(
-                value = message,
-                onValueChange = { message = it },
-                placeholder = { Text("Сообщение коммита") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column {
+                // Что войдёт в коммит
+                if (changes.isNotEmpty()) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 180.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(DeskBg)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        items(changes) { line ->
+                            val status = line.substringBefore(' ')
+                            val path = line.substringAfter(' ').trim()
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = status.take(2),
+                                    style = MaterialTheme.typography.labelSmall
+                                        .copy(fontFamily = JetMono),
+                                    color = when (status.firstOrNull()) {
+                                        'M' -> Sky.bar
+                                        'A' -> Sage.bar
+                                        'D' -> Lavender.bar
+                                        '?' -> DeskMuted
+                                        else -> DeskMuted
+                                    },
+                                    modifier = Modifier.width(22.dp)
+                                )
+                                Text(
+                                    text = path.substringAfterLast('/'),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = DeskText,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    placeholder = { Text("Сообщение коммита") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         },
         confirmButton = {
             TextButton(

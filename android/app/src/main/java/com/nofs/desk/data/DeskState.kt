@@ -77,6 +77,7 @@ data class GitState(
     val branches: List<String> = emptyList(),  // все локальные ветки
     val repoName: String = "",                 // имя папки репозитория
     val dirtyFiles: Int = 0,
+    val changes: List<String> = emptyList(),   // "M path" — изменённые файлы
     val ahead: Int = 0,
     val behind: Int = 0,
     val log: List<GitCommitEntry> = emptyList(),

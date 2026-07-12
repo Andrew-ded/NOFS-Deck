@@ -167,7 +167,7 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             }
             is DeskCommand.GitCommit -> gitOp { g ->
                 g.copy(
-                    dirtyFiles = 0, ahead = g.ahead + 1,
+                    dirtyFiles = 0, changes = emptyList(), ahead = g.ahead + 1,
                     log = listOf(
                         GitCommitEntry(randomHash(), command.message, "только что")
                     ) + g.log.take(5)
@@ -237,6 +237,11 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             branches = listOf("master", "feature/player-morph", "fix/reconnect"),
             repoName = "nofs-desk",
             dirtyFiles = 3,
+            changes = listOf(
+                "M app/src/main/java/com/nofs/desk/ui/DeskScreen.kt",
+                "M app/src/main/java/com/nofs/desk/ui/components/PlayerSheet.kt",
+                "?? app/src/main/java/com/nofs/desk/ui/components/GitGraph.kt"
+            ),
             ahead = 1,
             behind = 0,
             lastSync = "синк 12:40",
