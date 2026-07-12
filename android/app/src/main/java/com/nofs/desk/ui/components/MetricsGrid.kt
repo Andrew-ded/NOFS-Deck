@@ -21,10 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.nofs.desk.data.Metric
-import com.nofs.desk.ui.theme.DeskCard
-import com.nofs.desk.ui.theme.DeskMuted
-import com.nofs.desk.ui.theme.DeskText
 import com.nofs.desk.ui.theme.JetMono
+import com.nofs.desk.ui.theme.LocalDeskPalette
 import com.nofs.desk.ui.theme.pastel
 
 /** Сетка метрик: 3 карточки (CPU / GPU / RAM) с анимированными полосами. */
@@ -42,6 +40,7 @@ fun MetricsGrid(metrics: List<Metric>) {
 
 @Composable
 private fun MetricCard(metric: Metric, modifier: Modifier = Modifier) {
+    val palette = LocalDeskPalette.current
     val pastel = metric.accent.pastel()
     val fill by animateFloatAsState(
         targetValue = metric.fraction.coerceIn(0f, 1f),
@@ -51,25 +50,25 @@ private fun MetricCard(metric: Metric, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(22.dp))
-            .background(DeskCard)
+            .background(palette.card)
             .padding(16.dp)
     ) {
         Text(
             text = metric.label,
             style = MaterialTheme.typography.labelMedium,
-            color = DeskMuted
+            color = palette.muted
         )
         Spacer(Modifier.height(6.dp))
         Text(
             text = metric.primary,
             style = MaterialTheme.typography.headlineMedium.copy(fontFamily = JetMono),
-            color = DeskText
+            color = palette.text
         )
         Spacer(Modifier.height(2.dp))
         Text(
             text = metric.secondary,
             style = MaterialTheme.typography.labelSmall,
-            color = DeskMuted
+            color = palette.muted
         )
         Spacer(Modifier.height(12.dp))
         // Полоса: пастельный трек + заполнение

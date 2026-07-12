@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,10 +51,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import com.nofs.desk.data.AudioSession
 import com.nofs.desk.data.AudioState
 import com.nofs.desk.data.GitState
 import com.nofs.desk.data.PlaytimeEntry
@@ -61,6 +68,8 @@ import com.nofs.desk.ui.theme.DeskCard
 import com.nofs.desk.ui.theme.DeskMuted
 import com.nofs.desk.ui.theme.DeskText
 import com.nofs.desk.ui.theme.JetMono
+import com.nofs.desk.ui.theme.LocalDeskPalette
+import com.nofs.desk.ui.theme.Pastel
 import com.nofs.desk.ui.theme.Rose
 import com.nofs.desk.ui.theme.Sage
 import com.nofs.desk.ui.theme.Sky
@@ -165,8 +174,9 @@ private fun PageTab(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val palette = LocalDeskPalette.current
     val bg by animateColorAsState(
-        targetValue = if (selected) DeskText else DeskCard,
+        targetValue = if (selected) palette.text else palette.card,
         animationSpec = tween(200), label = "pageTab"
     )
     Row(
@@ -181,14 +191,14 @@ private fun PageTab(
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (selected) DeskCard else DeskMuted,
+            tint = if (selected) palette.card else palette.muted,
             modifier = Modifier.size(14.dp)
         )
         if (selected) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
-                color = DeskCard,
+                color = palette.card,
                 maxLines = 1
             )
         }
@@ -196,6 +206,17 @@ private fun PageTab(
 }
 
 // ==================== Микшер ====================
+// Большой вертикальный фейдер на канал; каналы (мастер + приложения)
+// листаются горизонтально свайпом (HorizontalPager).
+
+private data class MixerChannel(
+    val id: String,
+    val label: String,
+    val icon: ImageVector,
+    val volume: Float,
+    val muted: Boolean,
+    val accent: AccentTone
+)
 
 @Composable
 fun MixerPanel(
@@ -207,10 +228,40 @@ fun MixerPanel(
     onMuteSession: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val palette = LocalDeskPalette.current
+    val channels = remember(audio) {
+        buildList {
+            add(
+                MixerChannel(
+                    id = "master",
+                    label = "Общая громкость",
+                    icon = if (audio.masterMuted) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
+                    volume = audio.masterVolume,
+                    muted = audio.masterMuted,
+                    accent = AccentTone.SAGE
+                )
+            )
+            val accents = AccentTone.entries
+            audio.sessions.forEachIndexed { index, session ->
+                add(
+                    MixerChannel(
+                        id = session.id,
+                        label = session.label,
+                        icon = macroIcon(iconKeyFor(session.id)),
+                        volume = session.volume,
+                        muted = session.muted,
+                        accent = accents[(index + 1) % accents.size]
+                    )
+                )
+            }
+        }
+    }
+    val pagerState = rememberPagerState(pageCount = { channels.size })
+
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(DeskCard)
+            .background(palette.card)
             .padding(16.dp)
     ) {
         // Заголовок + мьют микрофона
@@ -218,103 +269,64 @@ fun MixerPanel(
             Text(
                 text = "Звук",
                 style = MaterialTheme.typography.labelMedium,
-                color = DeskMuted,
+                color = palette.muted,
                 modifier = Modifier.weight(1f)
             )
             MicButton(muted = audio.micMuted, onClick = onMuteMic)
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
 
-        // Мастер-громкость
-        VolumeRow(
-            icon = if (audio.masterMuted) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
-            iconTint = if (audio.masterMuted) Rose.bar else DeskText,
-            label = "Общая громкость",
-            volume = audio.masterVolume,
-            muted = audio.masterMuted,
-            accent = AccentTone.SAGE,
-            onIconClick = onMuteMaster,
-            onVolume = onMaster
-        )
-
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "Приложения",
-            style = MaterialTheme.typography.labelMedium,
-            color = DeskMuted
-        )
-        Spacer(Modifier.height(4.dp))
-
-        if (audio.sessions.isEmpty()) {
-            Text(
-                text = "нет активных источников звука",
-                style = MaterialTheme.typography.bodySmall,
-                color = DeskMuted,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        } else {
-            val accents = AccentTone.entries
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                itemsIndexed(audio.sessions, key = { _, s -> s.id }) { index, session ->
-                    SessionRow(
-                        session = session,
-                        accent = accents[index % accents.size],
-                        onVolume = { onSession(session.id, it) },
-                        onMute = { onMuteSession(session.id) }
-                    )
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f)
+        ) { index ->
+            val channel = channels[index]
+            ChannelFader(
+                channel = channel,
+                onVolume = { v ->
+                    if (channel.id == "master") onMaster(v) else onSession(channel.id, v)
+                },
+                onMuteToggle = {
+                    if (channel.id == "master") onMuteMaster() else onMuteSession(channel.id)
                 }
-            }
+            )
         }
+
+        Spacer(Modifier.height(8.dp))
+        PagerDots(count = channels.size, current = pagerState.currentPage)
     }
 }
 
+/** Большая кнопка мьюта микрофона — заметно крупнее прежней пилюли. */
 @Composable
 private fun MicButton(muted: Boolean, onClick: () -> Unit) {
+    val palette = LocalDeskPalette.current
     val bg by animateColorAsState(
-        targetValue = if (muted) Rose.bar else DeskBg,
+        targetValue = if (muted) Rose.bar else palette.bg,
         animationSpec = tween(200), label = "micBg"
     )
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(15.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(bg)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector = if (muted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
             contentDescription = "Микрофон",
-            tint = if (muted) DeskCard else DeskText,
-            modifier = Modifier.size(15.dp)
+            tint = if (muted) palette.card else palette.text,
+            modifier = Modifier.size(19.dp)
         )
         Text(
             text = if (muted) "Микро выкл" else "Микро вкл",
             style = MaterialTheme.typography.labelMedium,
-            color = if (muted) DeskCard else DeskText
+            color = if (muted) palette.card else palette.text
         )
     }
-}
-
-@Composable
-private fun SessionRow(
-    session: AudioSession,
-    accent: AccentTone,
-    onVolume: (Float) -> Unit,
-    onMute: () -> Unit
-) {
-    VolumeRow(
-        icon = macroIcon(iconKeyFor(session.id)),
-        iconTint = if (session.muted) DeskMuted else DeskText,
-        label = session.label,
-        volume = session.volume,
-        muted = session.muted,
-        accent = accent,
-        onIconClick = onMute,
-        onVolume = onVolume
-    )
 }
 
 /** Иконка по имени процесса — пара знакомых + generic. */
@@ -328,53 +340,60 @@ private fun iconKeyFor(processId: String): String = when {
     else -> "game"
 }
 
+/** Одна страница микшера: подпись, большой вертикальный фейдер, большая кнопка мьюта. */
 @Composable
-private fun VolumeRow(
-    icon: ImageVector,
-    iconTint: androidx.compose.ui.graphics.Color,
-    label: String,
-    volume: Float,
-    muted: Boolean,
-    accent: AccentTone,
-    onIconClick: () -> Unit,
-    onVolume: (Float) -> Unit
+private fun ChannelFader(
+    channel: MixerChannel,
+    onVolume: (Float) -> Unit,
+    onMuteToggle: () -> Unit
 ) {
-    val pastel = accent.pastel()
+    val palette = LocalDeskPalette.current
+    val pastel = channel.accent.pastel()
     var dragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(0f) }
-    val shown = if (dragging) dragValue else volume.coerceIn(0f, 1f)
+    val shown = if (dragging) dragValue else channel.volume.coerceIn(0f, 1f)
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = channel.icon,
+            contentDescription = null,
+            tint = if (channel.muted) palette.muted else palette.text,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = channel.label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (channel.muted) palette.muted else palette.text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = if (channel.muted) "тихо" else "${(shown * 100).toInt()}%",
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetMono),
+            color = palette.muted
+        )
+        Spacer(Modifier.height(10.dp))
         Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(if (muted) DeskBg else pastel.bg)
-                .clickable(onClick = onIconClick),
+            modifier = Modifier.weight(1f),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = iconTint,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (muted) DeskMuted else DeskText,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Slider(
-                value = shown,
+            // value передаётся инвертированной (1 - громкость): у VerticalSlider
+            // «0» рендерится сверху — так «вверх» на фейдере всегда значит громче.
+            VerticalSlider(
+                value = 1f - shown,
                 onValueChange = {
                     dragging = true
-                    dragValue = it
-                    onVolume(it)
+                    val v = 1f - it
+                    dragValue = v
+                    onVolume(v)
                 },
                 onValueChangeFinished = {
                     dragging = false
@@ -383,19 +402,108 @@ private fun VolumeRow(
                 colors = SliderDefaults.colors(
                     thumbColor = pastel.bar,
                     activeTrackColor = pastel.bar,
-                    inactiveTrackColor = DeskBg
+                    inactiveTrackColor = palette.bg
                 ),
-                modifier = Modifier.height(26.dp)
+                modifier = Modifier
+                    .width(56.dp)
+                    .fillMaxHeight(0.9f)
             )
         }
+        Spacer(Modifier.height(14.dp))
+        BigMuteButton(muted = channel.muted, accent = pastel, onClick = onMuteToggle)
+    }
+}
+
+/** Крупная кнопка мьюта/выкл звука на весь канал — основной способ приглушить громкость. */
+@Composable
+private fun BigMuteButton(muted: Boolean, accent: Pastel, onClick: () -> Unit) {
+    val palette = LocalDeskPalette.current
+    val bg by animateColorAsState(
+        targetValue = if (muted) Rose.bar else accent.bg,
+        animationSpec = tween(200), label = "muteBg"
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(bg)
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (muted) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
+            contentDescription = if (muted) "Включить звук" else "Выключить звук",
+            tint = if (muted) palette.card else palette.text,
+            modifier = Modifier.size(24.dp)
+        )
         Spacer(Modifier.width(8.dp))
         Text(
-            text = if (muted) "тихо" else "${(shown * 100).toInt()}%",
-            style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetMono),
-            color = DeskMuted,
-            modifier = Modifier.width(38.dp)
+            text = if (muted) "Тихо" else "Звук вкл",
+            style = MaterialTheme.typography.labelLarge,
+            color = if (muted) palette.card else palette.text
         )
     }
+}
+
+@Composable
+private fun PagerDots(count: Int, current: Int) {
+    if (count <= 1) return
+    val palette = LocalDeskPalette.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        repeat(count) { i ->
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 3.dp)
+                    .size(if (i == current) 8.dp else 6.dp)
+                    .clip(CircleShape)
+                    .background(if (i == current) palette.text else palette.handle)
+            )
+        }
+    }
+}
+
+/**
+ * Вертикальный слайдер: стандартный Material3 [Slider], повёрнутый на 90°.
+ * Значение 0 рендерится сверху, 1 — снизу (вызывающий код сам решает,
+ * как это отображать — см. инверсию в [ChannelFader]).
+ */
+@Composable
+private fun VerticalSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    colors: SliderColors,
+    modifier: Modifier = Modifier
+) {
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        onValueChangeFinished = onValueChangeFinished,
+        colors = colors,
+        modifier = modifier
+            .graphicsLayer {
+                rotationZ = -90f
+                transformOrigin = TransformOrigin(0f, 0f)
+            }
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(
+                    Constraints(
+                        minWidth = constraints.minHeight,
+                        maxWidth = constraints.maxHeight,
+                        minHeight = constraints.minWidth,
+                        maxHeight = constraints.maxWidth
+                    )
+                )
+                layout(placeable.height, placeable.width) {
+                    placeable.place(-placeable.width, 0)
+                }
+            }
+    )
 }
 
 // ==================== Плейтайм ====================

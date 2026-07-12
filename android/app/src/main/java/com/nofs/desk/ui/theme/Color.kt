@@ -1,5 +1,6 @@
 package com.nofs.desk.ui.theme
 
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.nofs.desk.data.AccentTone
 
@@ -10,11 +11,31 @@ val DeskText = Color(0xFF2B2B28)
 val DeskMuted = Color(0xFF9A968C)
 val DeskHandle = Color(0xFFDDD8CE)
 
-// Плеер (чёрная панель)
+// Плеер (чёрная панель) — переиспользуется как тёмная палитра игрового режима
 val PlayerBg = Color(0xFF0E0E10)
 val PlayerText = Color(0xFFF4F3F0)
 val PlayerCard = Color(0xFF1A1A1E)
 val PlayerMuted = Color(0xFF8A8A92)
+val PlayerHandle = Color(0xFF2A2A30)
+
+/** Токены фона/поверхностей экрана — переключаются целиком в игровом режиме. */
+data class DeskPalette(
+    val bg: Color,
+    val card: Color,
+    val text: Color,
+    val muted: Color,
+    val handle: Color
+)
+
+val LightDeskPalette = DeskPalette(
+    bg = DeskBg, card = DeskCard, text = DeskText, muted = DeskMuted, handle = DeskHandle
+)
+val DarkDeskPalette = DeskPalette(
+    bg = PlayerBg, card = PlayerCard, text = PlayerText, muted = PlayerMuted, handle = PlayerHandle
+)
+
+/** Активная палитра экрана; DeskScreen подставляет DarkDeskPalette в игровом режиме. */
+val LocalDeskPalette = staticCompositionLocalOf { LightDeskPalette }
 
 // Пастельные акценты категорий: фон / полоса
 data class Pastel(val bg: Color, val bar: Color)
