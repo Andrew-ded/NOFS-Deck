@@ -1,5 +1,7 @@
 package com.nofs.desk.ui.components
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +17,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,7 +25,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.nofs.desk.data.DeskSettings
 import com.nofs.desk.net.DiscoveredAgent
 import com.nofs.desk.ui.theme.DeskCard
@@ -46,6 +54,19 @@ fun SettingsDialog(
     var searching by remember { mutableStateOf(false) }
     var searchResult by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    val context = LocalContext.current
+    fun localMediaGranted() =
+        NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+    var localMediaAccess by remember { mutableStateOf(localMediaGranted()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) localMediaAccess = localMediaGranted()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -80,6 +101,26 @@ fun SettingsDialog(
                             checkedThumbColor = DeskCard
                         )
                     )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "Музыка с этого устройства",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = DeskText
+                        )
+                        Text(
+                            text = if (localMediaAccess)
+                                "Доступ выдан — запасной источник, когда на ПК тихо"
+                            else "Доступ к уведомлениям — иначе не видно плеер устройства",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = DeskMuted
+                        )
+                    }
+                    TextButton(onClick = {
+                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    }) { Text(if (localMediaAccess) "Настройки" else "Выдать доступ", color = DeskText) }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
