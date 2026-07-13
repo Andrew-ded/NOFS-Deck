@@ -4,8 +4,8 @@
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
         <!-- highestAvailable: у админа поднимаемся (нужно LibreHardwareMonitor
-             для температур и HttpListener для порта), у обычного пользователя
-             работаем деградированно. -->
+             для температур CPU/GPU), у обычного пользователя работаем без
+             элевации — сеть (TcpListener) прав администратора не требует. -->
         <requestedExecutionLevel level="highestAvailable" uiAccess="false" />
       </requestedPrivileges>
     </security>

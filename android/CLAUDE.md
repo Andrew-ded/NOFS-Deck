@@ -12,7 +12,8 @@ Unisoc T606, альбомная ориентация). Проект собран
 - Шрифты Manrope + JetBrains Mono **забандлены** в `res/font` (оффлайн).
 - Иконки: `material-icons-extended`. Сеть: OkHttp (WebSocket) + kotlinx-serialization.
 - Агент: C# / .NET 8, `net8.0-windows10.0.19041.0`, WinForms-трей,
-  LibreHardwareMonitorLib. Запуск от админа (температуры + порт HttpListener).
+  LibreHardwareMonitorLib. Работает без прав админа (сервер на TcpListener,
+  не http.sys); от админа — только опционально, ради температур CPU/GPU.
 - UI-подписи на русском; идентификаторы/логи — латиница.
 
 ## Текущее состояние
@@ -71,7 +72,8 @@ Git-панель — полноценный клиент: история до 20
 (`GitGraph.kt`, раскладка по дорожкам), метки refs, переключение веток
 (дропдаун → checkout), Pull/Commit/Push.
 
-Агент (`agent/NofsAgent`): WebSocket-сервер (HttpListener, `/ws`), UDP-ответчик
+Агент (`agent/NofsAgent`): WebSocket-сервер (TcpListener + ручной хендшейк, `/ws`,
+без прав админа), UDP-ответчик
 автопоиска, метрики LHM (1 с), медиа через GSMTC с обложкой base64 только при смене
 трека (1 с; позиция экстраполируется по LastUpdatedTime), контекст (2 с) — чипы
 ТОЛЬКО запущенных приложений из watchlist (Office/Rider/Studio/Chrome), макросы
@@ -131,7 +133,7 @@ agent/NofsAgent/                  .NET 8 трей-агент (см. agent/README
   Config.cs config.json           конфиг: порты, repoPath, github, apps, macros
   Protocol.cs                     DTO (зеркало Protocol.kt!)
   AgentHost.cs                    склейка: циклы push + диспетчер команд
-  Net/WsServer.cs                 HttpListener WebSocket, broadcast
+  Net/WsServer.cs                 TcpListener + ручной WS-хендшейк, broadcast (без прав админа)
   Net/DiscoveryResponder.cs       UDP-автопоиск
   Services/MetricsService.cs      LibreHardwareMonitor
   Services/MediaService.cs        GSMTC: трек/обложка/управление
@@ -157,8 +159,8 @@ agent/NofsAgent/                  .NET 8 трей-агент (см. agent/README
 ## Известные грабли
 - **Путь Android-проекта не должен содержать кириллицу** — AGP на Windows падает.
   Держать в ASCII-пути (напр. `C:\dev\NOFSDesk`). Обход: `android.overridePathCheck=true`.
-- Агент без прав админа: температуры нулевые (планшет скрывает), для порта нужен
-  `netsh http add urlacl url=http://+:48484/ user=Все`.
+- Агент без прав админа: только температуры CPU/GPU нулевые (планшет скрывает).
+  Порт открывается штатным TcpListener — админ/netsh не нужны.
 - Android-сборка в среде-заготовке не проверялась компилятором — возможны точечные
   API-мелочи Compose, правятся по тексту ошибки. Агент собирается чисто (dotnet build).
 - Обе стороны протокола менять синхронно (Protocol.kt ↔ Protocol.cs).

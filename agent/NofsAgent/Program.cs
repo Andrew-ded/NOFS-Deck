@@ -40,7 +40,7 @@ internal static class Program
             Log.Error($"start failed: {ex}");
             MessageBox.Show(
                 $"Не удалось запустить агента: {ex.Message}\n\n" +
-                $"Частая причина — порт {config.Port} занят или нет прав.\n" +
+                $"Частая причина — порт {config.Port} уже занят другим процессом.\n" +
                 $"Подробности: {Log.LogPath}",
                 "NOFS Agent", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return;
