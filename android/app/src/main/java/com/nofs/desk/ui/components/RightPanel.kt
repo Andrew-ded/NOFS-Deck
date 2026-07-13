@@ -385,27 +385,27 @@ private fun ChannelFader(
             modifier = Modifier.weight(1f),
             contentAlignment = Alignment.Center
         ) {
-            // value передаётся инвертированной (1 - громкость): у VerticalSlider
-            // «0» рендерится сверху — так «вверх» на фейдере всегда значит громче.
+            // VerticalSlider уже рендерит 1 сверху / 0 снизу без инверсии —
+            // «вверх» на фейдере значит громче.
             VerticalSlider(
-                value = 1f - shown,
+                value = shown,
                 onValueChange = {
                     dragging = true
-                    val v = 1f - it
-                    dragValue = v
-                    onVolume(v)
+                    dragValue = it
+                    onVolume(it)
                 },
                 onValueChangeFinished = {
                     dragging = false
                     onVolume(dragValue)
                 },
+                steps = 9,
                 colors = SliderDefaults.colors(
                     thumbColor = pastel.bar,
                     activeTrackColor = pastel.bar,
                     inactiveTrackColor = palette.bg
                 ),
                 modifier = Modifier
-                    .width(56.dp)
+                    .width(84.dp)
                     .fillMaxHeight(0.9f)
             )
         }
@@ -468,9 +468,10 @@ private fun PagerDots(count: Int, current: Int) {
 }
 
 /**
- * Вертикальный слайдер: стандартный Material3 [Slider], повёрнутый на 90°.
- * Значение 0 рендерится сверху, 1 — снизу (вызывающий код сам решает,
- * как это отображать — см. инверсию в [ChannelFader]).
+ * Вертикальный слайдер: стандартный Material3 [Slider], повёрнутый на -90°
+ * (=270°) через graphicsLayer+layout. С этой раскладкой 1 рендерится сверху,
+ * 0 — снизу — уже само по себе «вверх = громче», без инверсии значения.
+ * `steps` — риски деления (напр. 9 = каждые 10%).
  */
 @Composable
 private fun VerticalSlider(
@@ -478,12 +479,14 @@ private fun VerticalSlider(
     onValueChange: (Float) -> Unit,
     onValueChangeFinished: () -> Unit,
     colors: SliderColors,
+    steps: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Slider(
         value = value,
         onValueChange = onValueChange,
         onValueChangeFinished = onValueChangeFinished,
+        steps = steps,
         colors = colors,
         modifier = modifier
             .graphicsLayer {

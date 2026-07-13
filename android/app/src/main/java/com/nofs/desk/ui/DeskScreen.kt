@@ -131,10 +131,15 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
 
     // Правая колонка: плавно схлопывается/разворачивается по весу.
     // В игровом режиме слот (громкость) всегда на месте — его нельзя спрятать.
+    // Та же длительность/easing, что у playerProgress (animatePlayerProgress в
+    // PlayerSheet.kt) — иначе при открытии плеера со спрятанной Git-панелью
+    // колонка расширяется медленнее/быстрее, чем плеер выезжает по её ширине
+    // (translationX = size.width * (1 - progress)), и он на кадр-другой
+    // наезжает на левую колонку с макросами.
     val rightTarget = if (gameMode || gitVisible || playerProgress > 0.01f) 1f else 0f
     val rightWeight by animateFloatAsState(
         targetValue = rightTarget,
-        animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing),
         label = "rightWeight"
     )
 
