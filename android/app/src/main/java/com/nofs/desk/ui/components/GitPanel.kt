@@ -2,6 +2,8 @@ package com.nofs.desk.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Adjust
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.CallMerge
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Commit
@@ -77,6 +80,8 @@ fun GitPanel(
     onPush: () -> Unit,
     onCheckout: (String) -> Unit,
     onGitHubRefresh: () -> Unit,
+    builds: List<com.nofs.desk.data.BuildOption> = emptyList(),
+    onRunBuild: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -126,6 +131,42 @@ fun GitPanel(
                 trackColor = DeskBg
             )
             Spacer(Modifier.height(8.dp))
+        }
+
+        // Кнопки запуска сборки (сцена «Тень билда»)
+        if (builds.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                builds.forEach { b ->
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Sage.bg)
+                            .clickable { onRunBuild(b.id) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = null,
+                            tint = DeskText,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = b.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = DeskText,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
         }
 
         HorizontalPager(

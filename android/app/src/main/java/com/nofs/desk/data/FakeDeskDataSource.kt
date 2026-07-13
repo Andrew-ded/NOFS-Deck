@@ -50,17 +50,78 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             apps = demoApps,
             git = demoGit,
             audio = demoAudio,
-            playtime = demoPlaytime
+            playtime = demoPlaytime,
+            builds = listOf(
+                BuildOption("android", "Gradle · assembleDebug"),
+                BuildOption("dotnet", "dotnet build")
+            )
         )
     )
     override val state: StateFlow<DeskState> = _state
 
     private val jobs = mutableListOf<Job>()
 
+    @Volatile private var sceneRunning = false
+
     init {
         jobs += scope.launch { clockLoop() }
         jobs += scope.launch { metricsLoop() }
         jobs += scope.launch { mediaLoop() }
+        _state.update { it.copy(daily = demoDaily) }
+    }
+
+    /** Демо-сборка: прогон сцены idle→running→success→idle. Запускается кнопкой. */
+    private fun runDemoBuild() {
+        if (sceneRunning) return
+        sceneRunning = true
+        scope.launch {
+            try {
+                val tasks = listOf(
+                    ":app:preBuild", ":app:mergeDebugResources", ":app:processDebugManifest",
+                    ":app:compileDebugKotlin", ":app:kaptDebugKotlin", ":app:mergeDebugAssets",
+                    ":app:packageDebug", ":app:assembleDebug"
+                )
+                val total = tasks.size
+                val log = ArrayDeque<String>()
+                val start = System.currentTimeMillis()
+                for ((i, t) in tasks.withIndex()) {
+                    delay(700)
+                    log.addLast("> Task $t")
+                    if (log.size > 6) log.removeFirst()
+                    _state.update {
+                        it.copy(
+                            scene = it.scene.copy(
+                                phase = ScenePhase.RUNNING,
+                                source = "Gradle · assembleDebug",
+                                task = t,
+                                taskNum = i + 1,
+                                taskTotal = total,
+                                elapsedSec = ((System.currentTimeMillis() - start) / 1000).toInt(),
+                                testsPassed = if (i > 4) 128 else 0,
+                                testsFailed = 0,
+                                logTail = log.toList(),
+                                at = start
+                            )
+                        )
+                    }
+                }
+                delay(500)
+                _state.update {
+                    it.copy(
+                        scene = it.scene.copy(
+                            phase = ScenePhase.SUCCESS,
+                            task = "готово",
+                            elapsedSec = ((System.currentTimeMillis() - start) / 1000).toInt(),
+                            testsPassed = 128, testsFailed = 0, at = start
+                        )
+                    )
+                }
+                delay(11_000)
+                _state.update { it.copy(scene = it.scene.copy(phase = ScenePhase.IDLE)) }
+            } finally {
+                sceneRunning = false
+            }
+        }
     }
 
     private suspend fun clockLoop() {
@@ -195,6 +256,11 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
                     if (it.id == command.id) it.copy(volume = command.volume, muted = false) else it
                 }))
             }
+            is DeskCommand.RunBuild -> runDemoBuild()
+            DeskCommand.CancelBuild -> {
+                sceneRunning = false
+                _state.update { it.copy(scene = it.scene.copy(phase = ScenePhase.IDLE)) }
+            }
             is DeskCommand.AudioMuteSession -> _state.update { st ->
                 st.copy(audio = st.audio.copy(sessions = st.audio.sessions.map {
                     if (it.id == command.id) it.copy(muted = !it.muted) else it
@@ -276,6 +342,14 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             AppContext("studio", "Android Studio", "android", true),
             AppContext("chrome", "Chrome", "browser", false),
             AppContext("word", "Word", "doc", false)
+        )
+        val demoDaily = DailySummary(
+            buildsToday = 7,
+            avgBuildSec = 192,
+            commitHash = "a3f92c1",
+            commitMsg = "player: морфинг обложки круг-квадрат",
+            todoCount = 4,
+            fixmeCount = 1
         )
         val demoGit = GitState(
             branch = "feature/player-morph",

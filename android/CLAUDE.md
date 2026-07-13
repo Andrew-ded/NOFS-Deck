@@ -5,6 +5,15 @@
 Unisoc T606, альбомная ориентация). Проект собран целиком: Android-приложение
 (демо-режим + реальный WebSocket-источник) и .NET-агент в трее на ПК.
 
+## Ветка feature/companion-suite (в работе)
+Большой набор новых фич из бэклога, идём по списку. Готово: **QR-мост буфера**
+(агент `ClipboardService.cs` — STA-поток + AddClipboardFormatListener, фильтр
+чувствительных строк; протокол `clipboard`; планшет `QrOverlay.kt` — ZXing,
+транзиентная карточка снизу-справа с кольцом-таймером, тап = крупный QR).
+Осталось (см. задачи): сцена/тень билда, паспорт файла, Obsidian, git-дифф+
+«пока меня не было», логи, предиктивные алерты, presence, remote typing.
+Новые UI-панели используют `LocalDeskPalette.current` (игровой тёмный режим).
+
 ## Стек и ограничения
 - Планшет: Kotlin + Jetpack Compose, Material 3.
 - `minSdk 26`, `targetSdk 34`, Kotlin 2.0.21, AGP 8.5.2, Compose BOM 2024.09.03.

@@ -154,6 +154,44 @@ data class PlaytimeMsg(
     val week: List<PlaytimeEntryDto> = emptyList()
 )
 
+@Serializable
+data class ClipboardMsg(val text: String = "", val kind: String = "text")
+
+@Serializable
+data class BuildOptionDto(val id: String, val label: String)
+
+@Serializable
+data class BuildsMsg(val builds: List<BuildOptionDto> = emptyList())
+
+/**
+ * Сцена: live-статус длинного действия на ПК (сборка/тесты).
+ * phase: running (своя сборка, полные детали) | external (сборка в IDE,
+ * только факт) | success | failed | idle (сцены нет).
+ */
+@Serializable
+data class SceneMsg(
+    val phase: String = "idle",
+    val source: String = "",          // "Gradle · assembleDebug"
+    val task: String = "",            // текущая задача/строка статуса
+    val taskNum: Int = 0,
+    val taskTotal: Int = 0,           // 0 = неизвестно (полоса-бегунок)
+    val elapsedSec: Int = 0,
+    val testsPassed: Int = 0,
+    val testsFailed: Int = 0,
+    val logTail: List<String> = emptyList()
+)
+
+/** Сводка дня для скринсейвера: сборки, случайный коммит, TODO/FIXME. */
+@Serializable
+data class DailyMsg(
+    val buildsToday: Int = 0,
+    val avgBuildSec: Int = 0,
+    val commitHash: String = "",
+    val commitMsg: String = "",
+    val todoCount: Int = -1,          // -1 = не посчитано
+    val fixmeCount: Int = -1
+)
+
 // ---------- планшет -> агент ----------
 
 object Cmd {
@@ -191,6 +229,14 @@ object Cmd {
 
     fun audioMuteSession(id: String): JsonObject = buildJsonObject {
         put("type", "cmd"); put("cmd", "audioMuteSession"); put("id", id)
+    }
+
+    fun runBuild(id: String): JsonObject = buildJsonObject {
+        put("type", "cmd"); put("cmd", "runBuild"); put("id", id)
+    }
+
+    fun cancelBuild(): JsonObject = buildJsonObject {
+        put("type", "cmd"); put("cmd", "cancelBuild")
     }
 }
 

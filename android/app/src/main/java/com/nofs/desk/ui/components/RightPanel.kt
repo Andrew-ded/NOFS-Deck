@@ -94,6 +94,8 @@ fun RightPanel(
     onGitPush: () -> Unit,
     onGitCheckout: (String) -> Unit,
     onGitHubRefresh: () -> Unit,
+    builds: List<com.nofs.desk.data.BuildOption> = emptyList(),
+    onRunBuild: (String) -> Unit = {},
     onAudioMaster: (Float) -> Unit,
     onAudioMuteMaster: () -> Unit,
     onAudioMuteMic: () -> Unit,
@@ -147,6 +149,8 @@ fun RightPanel(
                     onPush = onGitPush,
                     onCheckout = onGitCheckout,
                     onGitHubRefresh = onGitHubRefresh,
+                    builds = builds,
+                    onRunBuild = onRunBuild,
                     modifier = Modifier.fillMaxSize()
                 )
                 RightPage.MIXER -> MixerPanel(

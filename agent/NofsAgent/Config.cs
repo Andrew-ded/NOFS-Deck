@@ -12,6 +12,7 @@ public sealed class Config
     [JsonPropertyName("github")] public GitHubConfig GitHub { get; set; } = new();
     [JsonPropertyName("apps")] public List<AppConfig> Apps { get; set; } = new();
     [JsonPropertyName("macros")] public List<MacroConfig> Macros { get; set; } = new();
+    [JsonPropertyName("builds")] public List<BuildConfig> Builds { get; set; } = new();
 
     public static string FilePath =>
         Path.Combine(AppContext.BaseDirectory, "config.json");
@@ -77,6 +78,17 @@ public sealed class AppConfig
     [JsonPropertyName("process")] public string Process { get; set; } = "";
     /// <summary>Чем запускать, если процесс не найден (может быть пустым).</summary>
     [JsonPropertyName("path")] public string Path { get; set; } = "";
+}
+
+public sealed class BuildConfig
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("label")] public string Label { get; set; } = "";
+    /// <summary>Программа: gradlew.bat / dotnet / cmd.</summary>
+    [JsonPropertyName("cmd")] public string Cmd { get; set; } = "";
+    [JsonPropertyName("args")] public string Args { get; set; } = "";
+    /// <summary>Рабочая папка; пусто — repoPath.</summary>
+    [JsonPropertyName("cwd")] public string Cwd { get; set; } = "";
 }
 
 public sealed class MacroConfig

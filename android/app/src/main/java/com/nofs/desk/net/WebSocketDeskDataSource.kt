@@ -5,6 +5,11 @@ import com.nofs.desk.data.AccentTone
 import com.nofs.desk.data.AppContext
 import com.nofs.desk.data.AudioSession
 import com.nofs.desk.data.AudioState
+import com.nofs.desk.data.BuildOption
+import com.nofs.desk.data.ClipboardEvent
+import com.nofs.desk.data.DailySummary
+import com.nofs.desk.data.ScenePhase
+import com.nofs.desk.data.SceneState
 import com.nofs.desk.data.PlaytimeEntry
 import com.nofs.desk.data.PlaytimeState
 import com.nofs.desk.data.ConnectionStatus
@@ -237,6 +242,57 @@ class WebSocketDeskDataSource(
                     )
                 }
             }
+            "scene" -> {
+                val s = ProtocolJson.decodeFromJsonElement<SceneMsg>(obj)
+                val phase = runCatching { ScenePhase.valueOf(s.phase.uppercase()) }
+                    .getOrDefault(ScenePhase.IDLE)
+                _state.update { st ->
+                    st.copy(
+                        scene = SceneState(
+                            phase = phase,
+                            source = s.source,
+                            task = s.task,
+                            taskNum = s.taskNum,
+                            taskTotal = s.taskTotal,
+                            elapsedSec = s.elapsedSec,
+                            testsPassed = s.testsPassed,
+                            testsFailed = s.testsFailed,
+                            logTail = s.logTail,
+                            at = if (phase != st.scene.phase) System.currentTimeMillis()
+                            else st.scene.at
+                        )
+                    )
+                }
+            }
+            "builds" -> {
+                val b = ProtocolJson.decodeFromJsonElement<BuildsMsg>(obj)
+                _state.update { st ->
+                    st.copy(builds = b.builds.map { BuildOption(it.id, it.label) })
+                }
+            }
+            "daily" -> {
+                val d = ProtocolJson.decodeFromJsonElement<DailyMsg>(obj)
+                _state.update {
+                    it.copy(
+                        daily = DailySummary(
+                            buildsToday = d.buildsToday,
+                            avgBuildSec = d.avgBuildSec,
+                            commitHash = d.commitHash,
+                            commitMsg = d.commitMsg,
+                            todoCount = d.todoCount,
+                            fixmeCount = d.fixmeCount
+                        )
+                    )
+                }
+            }
+            "clipboard" -> {
+                val c = ProtocolJson.decodeFromJsonElement<ClipboardMsg>(obj)
+                if (c.text.isNotBlank()) {
+                    _state.update {
+                        it.copy(clipboard = ClipboardEvent(c.text, c.kind, System.currentTimeMillis()))
+                    }
+                }
+            }
             "error" -> {
                 val e = ProtocolJson.decodeFromJsonElement<ErrorMsg>(obj)
                 if (e.message.isNotBlank()) {
@@ -313,6 +369,8 @@ class WebSocketDeskDataSource(
             DeskCommand.AudioMuteMic -> Cmd.simple("audioMuteMic")
             is DeskCommand.AudioSessionVolume -> Cmd.audioSession(command.id, command.volume)
             is DeskCommand.AudioMuteSession -> Cmd.audioMuteSession(command.id)
+            is DeskCommand.RunBuild -> Cmd.runBuild(command.id)
+            DeskCommand.CancelBuild -> Cmd.cancelBuild()
         }
         ws?.send(json.toString())
     }

@@ -53,6 +53,8 @@ import kotlinx.coroutines.delay
 import com.nofs.desk.DeskViewModel
 import com.nofs.desk.data.ConnectionStatus
 import com.nofs.desk.data.DeskCommand
+import com.nofs.desk.data.ScenePhase
+import com.nofs.desk.data.SceneState
 import com.nofs.desk.ui.components.BottomPlayerPill
 import com.nofs.desk.ui.components.DeskHeader
 import com.nofs.desk.ui.components.MacroPanel
@@ -60,6 +62,8 @@ import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
 import com.nofs.desk.ui.components.MixerPanel
 import com.nofs.desk.ui.components.PlayerSheet
+import com.nofs.desk.ui.components.QrOverlay
+import com.nofs.desk.ui.components.SceneOverlay
 import com.nofs.desk.ui.components.RightPanel
 import com.nofs.desk.ui.components.Screensaver
 import com.nofs.desk.ui.components.SettingsDialog
@@ -272,6 +276,8 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                             onGitPush = { viewModel.send(DeskCommand.GitPush) },
                             onGitCheckout = { viewModel.send(DeskCommand.GitCheckout(it)) },
                             onGitHubRefresh = { viewModel.send(DeskCommand.GitHubRefresh) },
+                            builds = state.builds,
+                            onRunBuild = { viewModel.send(DeskCommand.RunBuild(it)) },
                             onAudioMaster = { viewModel.send(DeskCommand.AudioMaster(it)) },
                             onAudioMuteMaster = { viewModel.send(DeskCommand.AudioMuteMaster) },
                             onAudioMuteMic = { viewModel.send(DeskCommand.AudioMuteMic) },
@@ -330,10 +336,31 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
             )
         }
 
-        // Скринсейвер поверх всего
+        // QR-мост буфера обмена — транзиентная карточка снизу-справа
+        QrOverlay(event = state.clipboard)
+
+        // Полноэкранная сцена сборки/тестов («Тень билда»)
+        var sceneDismissed by remember { mutableLongStateOf(0L) }
+        val sceneVisible = state.scene.phase != ScenePhase.IDLE &&
+            state.scene.at != sceneDismissed
+        LaunchedEffect(state.scene.phase, state.scene.at) {
+            if (state.scene.phase == ScenePhase.SUCCESS ||
+                state.scene.phase == ScenePhase.FAILED
+            ) {
+                delay(10_000)
+                sceneDismissed = state.scene.at
+            }
+        }
+        SceneOverlay(
+            scene = if (sceneVisible) state.scene else SceneState(),
+            onDismiss = { sceneDismissed = state.scene.at }
+        )
+
+        // Скринсейвер поверх всего (+ сводка дня второй строкой)
         Screensaver(
             clock = state.clock,
             date = state.date,
+            daily = state.daily,
             visible = saverActive,
             onDismiss = { saverActive = false }
         )
@@ -353,3 +380,5 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
         )
     }
 }
+
+

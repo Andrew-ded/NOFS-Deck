@@ -99,6 +99,38 @@ enum class ConnectionStatus { DEMO, CONNECTING, CONNECTED, DISCONNECTED }
 /** Ошибка с агента; timestamp — чтобы одинаковые тексты показывались повторно. */
 data class ErrorEvent(val message: String, val at: Long)
 
+/** Новый текст/ссылка из буфера ПК — планшет показывает QR транзиентно. */
+data class ClipboardEvent(val text: String, val kind: String, val at: Long)
+
+enum class ScenePhase { IDLE, RUNNING, EXTERNAL, SUCCESS, FAILED }
+
+/** Live-статус долгого действия на ПК (сборка/тесты) — полноэкранная сцена. */
+data class SceneState(
+    val phase: ScenePhase = ScenePhase.IDLE,
+    val source: String = "",
+    val task: String = "",
+    val taskNum: Int = 0,
+    val taskTotal: Int = 0,          // 0 = неизвестно → полоса-бегунок
+    val elapsedSec: Int = 0,
+    val testsPassed: Int = 0,
+    val testsFailed: Int = 0,
+    val logTail: List<String> = emptyList(),
+    val at: Long = 0L                // штамп смены фазы (для автозакрытия)
+)
+
+/** Настроенная на ПК сборка — кнопка запуска на планшете. */
+data class BuildOption(val id: String, val label: String)
+
+/** Сводка дня — вторая строка скринсейвера. */
+data class DailySummary(
+    val buildsToday: Int = 0,
+    val avgBuildSec: Int = 0,
+    val commitHash: String = "",
+    val commitMsg: String = "",
+    val todoCount: Int = -1,
+    val fixmeCount: Int = -1
+)
+
 /** Аудио-сессия приложения на ПК. */
 data class AudioSession(
     val id: String,            // имя процесса
@@ -135,7 +167,11 @@ data class DeskState(
     val git: GitState = GitState(),
     val audio: AudioState = AudioState(),
     val playtime: PlaytimeState = PlaytimeState(),
-    val error: ErrorEvent? = null
+    val error: ErrorEvent? = null,
+    val clipboard: ClipboardEvent? = null,
+    val scene: SceneState = SceneState(),
+    val daily: DailySummary = DailySummary(),
+    val builds: List<BuildOption> = emptyList()
 )
 
 /** Команды планшета к источнику данных. */
@@ -157,4 +193,6 @@ sealed interface DeskCommand {
     data object AudioMuteMic : DeskCommand
     data class AudioSessionVolume(val id: String, val volume: Float) : DeskCommand
     data class AudioMuteSession(val id: String) : DeskCommand
+    data class RunBuild(val id: String) : DeskCommand
+    data object CancelBuild : DeskCommand
 }

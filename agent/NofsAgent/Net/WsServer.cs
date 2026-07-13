@@ -20,6 +20,8 @@ public sealed class WsServer : IDisposable
 
     private readonly TcpListener _listener;
     private readonly ConcurrentDictionary<Guid, WebSocket> _clients = new();
+    /// <summary>По семафору на клиента: SendAsync нельзя звать параллельно на один сокет.</summary>
+    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _sendLocks = new();
     private readonly CancellationTokenSource _cts = new();
 
     /// <summary>Команда от планшета.</summary>
@@ -77,11 +79,12 @@ public sealed class WsServer : IDisposable
                 return;
             }
 
+            var key = "";
             var isWebSocket =
                 path == "/ws" &&
                 headers.TryGetValue("upgrade", out var upgrade) &&
                 upgrade.Contains("websocket", StringComparison.OrdinalIgnoreCase) &&
-                headers.TryGetValue("sec-websocket-key", out var key);
+                headers.TryGetValue("sec-websocket-key", out key);
 
             if (!isWebSocket)
             {
@@ -246,30 +249,37 @@ public sealed class WsServer : IDisposable
         if (_clients.IsEmpty) return;
         var bytes = Encoding.UTF8.GetBytes(Protocol.Serialize(msg));
         foreach (var (id, socket) in _clients)
-        {
-            if (socket.State != WebSocketState.Open) continue;
-            try
-            {
-                await socket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts.Token);
-            }
-            catch
-            {
-                _clients.TryRemove(id, out _);
-            }
-        }
+            await SendRawAsync(id, socket, bytes);
     }
 
     /// <summary>Отправить сообщение одному клиенту (снапшот при подключении).</summary>
     public async Task SendAsync<T>(Guid clientId, T msg)
     {
         if (!_clients.TryGetValue(clientId, out var socket)) return;
-        if (socket.State != WebSocketState.Open) return;
         var bytes = Encoding.UTF8.GetBytes(Protocol.Serialize(msg));
+        await SendRawAsync(clientId, socket, bytes);
+    }
+
+    /// <summary>Сериализованная отправка: держим семафор клиента, иначе параллельные
+    /// SendAsync (метрики + сцена из потоков сборки) роняют один WebSocket.</summary>
+    private async Task SendRawAsync(Guid id, WebSocket socket, byte[] bytes)
+    {
+        if (socket.State != WebSocketState.Open) return;
+        var gate = _sendLocks.GetOrAdd(id, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(_cts.Token);
         try
         {
             await socket.SendAsync(bytes, WebSocketMessageType.Text, true, _cts.Token);
         }
-        catch { _clients.TryRemove(clientId, out _); }
+        catch
+        {
+            _clients.TryRemove(id, out _);
+            if (_sendLocks.TryRemove(id, out var g)) g.Dispose();
+        }
+        finally
+        {
+            try { gate.Release(); } catch { }
+        }
     }
 
     public void Dispose()

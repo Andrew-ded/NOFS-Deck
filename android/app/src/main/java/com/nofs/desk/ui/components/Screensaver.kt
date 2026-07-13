@@ -35,7 +35,8 @@ fun Screensaver(
     clock: String,
     date: String,
     visible: Boolean,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    daily: com.nofs.desk.data.DailySummary = com.nofs.desk.data.DailySummary()
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -75,7 +76,36 @@ fun Screensaver(
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF575652)
                 )
+                val summary = dailyLine(daily)
+                if (summary != null) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = summary,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF44443F),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             }
         }
     }
+}
+
+/** Вторая строка скринсейвера: сборки дня / коммит / TODO-FIXME. */
+private fun dailyLine(d: com.nofs.desk.data.DailySummary): String? {
+    val parts = mutableListOf<String>()
+    if (d.buildsToday > 0) {
+        val avg = if (d.avgBuildSec > 0) " · ~${d.avgBuildSec / 60}м ${d.avgBuildSec % 60}с" else ""
+        parts += "сборок сегодня: ${d.buildsToday}$avg"
+    }
+    if (d.commitMsg.isNotBlank()) {
+        val hash = if (d.commitHash.isNotBlank()) "${d.commitHash} · " else ""
+        parts += "$hash${d.commitMsg}"
+    }
+    if (d.todoCount >= 0 || d.fixmeCount >= 0) {
+        val todo = if (d.todoCount >= 0) "TODO ${d.todoCount}" else ""
+        val fixme = if (d.fixmeCount >= 0) "FIXME ${d.fixmeCount}" else ""
+        parts += listOf(todo, fixme).filter { it.isNotBlank() }.joinToString(" · ")
+    }
+    return if (parts.isEmpty()) null else parts.joinToString("\n")
 }

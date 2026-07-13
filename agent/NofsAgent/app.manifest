@@ -3,10 +3,11 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- highestAvailable: у админа поднимаемся (нужно LibreHardwareMonitor
-             для температур CPU/GPU), у обычного пользователя работаем без
-             элевации — сеть (TcpListener) прав администратора не требует. -->
-        <requestedExecutionLevel level="highestAvailable" uiAccess="false" />
+        <!-- asInvoker: сеть (TcpListener) прав администратора не требует, поэтому
+             не просим элевацию вообще — иначе Windows показывает UAC-запрос при
+             каждом запуске для админских учёток. Температуры CPU/GPU (LibreHardwareMonitor)
+             без явного «запуска от администратора» будут нулевыми — планшет их скрывает. -->
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

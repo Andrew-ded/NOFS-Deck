@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using NofsAgent.Net;
 using NofsAgent.Services;
 
@@ -21,7 +22,11 @@ public sealed class AgentHost : IDisposable
     private readonly GitHubService _github;
     private readonly AudioService _audio = new();
     private readonly PlaytimeService _playtime;
+    private readonly ClipboardService _clipboard = new();
+    private readonly BuildService _build;
+    private readonly DailyService _daily;
     private readonly CancellationTokenSource _cts = new();
+    private volatile bool _sceneBusy;   // идёт своя сборка — внешнюю детекцию глушим
 
     private string _githubRepo = "";
 
@@ -36,12 +41,28 @@ public sealed class AgentHost : IDisposable
         _git = new GitService(config.RepoPath);
         _github = new GitHubService(config.GitHub);
         _playtime = new PlaytimeService(config.Apps);
+        _build = new BuildService(config.Builds, config.RepoPath);
+        _daily = new DailyService(config.RepoPath);
 
         _server = new WsServer(config.Port);
         _server.CommandReceived += cmd => _ = HandleCommandAsync(cmd);
         _server.ClientConnected += SendSnapshotAsync;
         _server.ClientCountChanged += n => ClientCountChanged?.Invoke(n);
         _server.RepoChangeRequested += SetRepoAsync;
+        _clipboard.Changed += item =>
+            _ = _server.BroadcastAsync(new ClipboardMsg(item.Text, item.Kind));
+        _build.Updated += s =>
+        {
+            _sceneBusy = s.Phase is "running";
+            _ = _server.BroadcastAsync(new SceneMsg(
+                s.Phase, s.Source, s.Task, s.TaskNum, s.TaskTotal,
+                s.ElapsedSec, s.TestsPassed, s.TestsFailed, s.LogTail));
+        };
+        _build.Finished += (ok, sec) =>
+        {
+            _daily.RecordBuild(sec);
+            _ = _server.BroadcastAsync(_daily.Snapshot());
+        };
         _discovery = new DiscoveryResponder(config.DiscoveryPort, config.Port);
     }
 
@@ -53,9 +74,12 @@ public sealed class AgentHost : IDisposable
             : _config.GitHub.Repo;
 
         _server.Start();
+        _clipboard.Start();                      // QR-мост буфера обмена
         _ = LoopAsync(1000, PushFastAsync);      // метрики + медиа
         _ = LoopAsync(2000, PushContextAsync);   // активное окно + аудио
         _ = PlaytimeLoopAsync();                 // учёт времени (тикает и без клиентов)
+        _ = ExternalBuildLoopAsync();            // грубая детекция сборок из IDE
+        _ = DailyLoopAsync();                    // сводка дня раз в 5 мин
         Log.Info($"agent up: ws://0.0.0.0:{_config.Port}/ws, discovery :{_config.DiscoveryPort}, " +
                  $"repo='{_config.RepoPath}', github='{_githubRepo}'");
     }
@@ -110,6 +134,79 @@ public sealed class AgentHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Гибрид: если своя сборка не идёт, но процессы Gradle-демона (java/OpenJDK)
+    /// или MSBuild/dotnet заметно грузят CPU — показываем сцену «сборка в IDE»
+    /// без деталей. Замер по дельте процессорного времени за интервал.
+    /// </summary>
+    private async Task ExternalBuildLoopAsync()
+    {
+        var names = new[] { "java", "OpenJDK Platform binary", "MSBuild", "dotnet", "VBCSCompiler" };
+        var prev = new Dictionary<int, TimeSpan>();
+        var externalShown = false;
+        const int periodMs = 2000;
+
+        while (!_cts.IsCancellationRequested)
+        {
+            try
+            {
+                var busy = false;
+                if (!_sceneBusy && _server.HasClients)
+                {
+                    double totalDeltaMs = 0;
+                    foreach (var name in names)
+                    {
+                        foreach (var p in Process.GetProcessesByName(name))
+                        {
+                            try
+                            {
+                                var cpu = p.TotalProcessorTime;
+                                if (prev.TryGetValue(p.Id, out var was))
+                                    totalDeltaMs += (cpu - was).TotalMilliseconds;
+                                prev[p.Id] = cpu;
+                            }
+                            catch { }
+                            finally { p.Dispose(); }
+                        }
+                    }
+                    // >70% одного ядра за интервал = что-то компилируется
+                    busy = totalDeltaMs > periodMs * 0.7;
+                }
+
+                if (busy && !externalShown)
+                {
+                    externalShown = true;
+                    await _server.BroadcastAsync(new SceneMsg(
+                        "external", "IDE", "", 0, 0, 0, 0, 0, new()));
+                }
+                else if (!busy && externalShown)
+                {
+                    externalShown = false;
+                    await _server.BroadcastAsync(new SceneMsg(
+                        "idle", "", "", 0, 0, 0, 0, 0, new()));
+                }
+            }
+            catch (Exception ex) { Log.Warn($"external build: {ex.Message}"); }
+
+            try { await Task.Delay(periodMs, _cts.Token); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    private async Task DailyLoopAsync()
+    {
+        while (!_cts.IsCancellationRequested)
+        {
+            try { await Task.Delay(TimeSpan.FromMinutes(5), _cts.Token); }
+            catch (OperationCanceledException) { break; }
+            if (_server.HasClients)
+            {
+                try { await _server.BroadcastAsync(_daily.Snapshot()); }
+                catch (Exception ex) { Log.Warn($"daily push: {ex.Message}"); }
+            }
+        }
+    }
+
     // ---------- снапшот новому клиенту ----------
 
     private async Task SendSnapshotAsync(Guid clientId)
@@ -121,6 +218,9 @@ public sealed class AgentHost : IDisposable
         await _server.SendAsync(clientId, await _media.ReadAsync(forceArt: true));
         await _server.SendAsync(clientId, _audio.Read());
         await _server.SendAsync(clientId, _playtime.Snapshot());
+        await _server.SendAsync(clientId, new BuildsMsg(
+            _build.List().Select(b => new BuildOptionDto(b.id, b.label)).ToList()));
+        await _server.SendAsync(clientId, _daily.Snapshot());
         await _server.SendAsync(clientId, await _git.SnapshotAsync());
     }
 
@@ -175,6 +275,13 @@ public sealed class AgentHost : IDisposable
                     _audio.ToggleSessionMute(cmd.Id);
                     await _server.BroadcastAsync(_audio.Read());
                 }
+                break;
+
+            case "runBuild":
+                if (cmd.Id != null) _build.Run(cmd.Id);
+                break;
+            case "cancelBuild":
+                _build.Cancel();
                 break;
 
             case "githubRefresh":
@@ -244,5 +351,7 @@ public sealed class AgentHost : IDisposable
         _metrics.Dispose();
         _audio.Dispose();
         _playtime.Dispose();   // финальный сейв playtime.json
+        _clipboard.Dispose();
+        _build.Dispose();
     }
 }

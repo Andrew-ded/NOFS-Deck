@@ -104,6 +104,36 @@ public sealed record PlaytimeMsg(
     public string Type => "playtime";
 }
 
+/// <summary>Новый текст/ссылка из буфера ПК — планшет покажет QR.</summary>
+public sealed record ClipboardMsg(string Text, string Kind)
+{
+    public string Type => "clipboard";
+}
+
+/// <summary>Live-статус сборки/тестов — полноэкранная сцена.</summary>
+public sealed record SceneMsg(
+    string Phase, string Source, string Task,
+    int TaskNum, int TaskTotal, int ElapsedSec,
+    int TestsPassed, int TestsFailed, List<string> LogTail)
+{
+    public string Type => "scene";
+}
+
+public sealed record BuildOptionDto(string Id, string Label);
+
+public sealed record BuildsMsg(List<BuildOptionDto> Builds)
+{
+    public string Type => "builds";
+}
+
+/// <summary>Сводка дня для скринсейвера.</summary>
+public sealed record DailyMsg(
+    int BuildsToday, int AvgBuildSec, string CommitHash, string CommitMsg,
+    int TodoCount, int FixmeCount)
+{
+    public string Type => "daily";
+}
+
 // ---------- планшет -> агент ----------
 
 public sealed class CmdMsg
