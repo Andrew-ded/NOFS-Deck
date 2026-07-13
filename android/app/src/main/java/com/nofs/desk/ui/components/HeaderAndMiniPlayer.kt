@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
@@ -278,14 +279,25 @@ fun BottomPlayerPill(
                 overflow = TextOverflow.Ellipsis
             )
             val sub = media.artist.ifBlank { media.sourceApp }
-            if (sub.isNotBlank()) {
-                Text(
-                    text = sub,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = PlayerMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            if (sub.isNotBlank() || media.isLocalSource) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (media.isLocalSource) {
+                        Icon(
+                            imageVector = Icons.Rounded.Smartphone,
+                            contentDescription = "Играет на этом устройстве",
+                            tint = PlayerMuted,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Spacer(Modifier.width(3.dp))
+                    }
+                    Text(
+                        text = sub,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PlayerMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
         Spacer(Modifier.width(6.dp))

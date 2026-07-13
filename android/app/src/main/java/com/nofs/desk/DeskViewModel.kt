@@ -8,19 +8,24 @@ import com.nofs.desk.data.DeskDataSource
 import com.nofs.desk.data.DeskSettings
 import com.nofs.desk.data.DeskState
 import com.nofs.desk.data.FakeDeskDataSource
+import com.nofs.desk.data.MediaState
 import com.nofs.desk.data.SettingsStore
+import com.nofs.desk.media.LocalMediaSource
 import com.nofs.desk.net.Discovery
 import com.nofs.desk.net.DiscoveredAgent
 import com.nofs.desk.net.WebSocketDeskDataSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
  * Держит источник данных и отдаёт StateFlow<DeskState> в UI.
  * Источник выбирается настройками: демо (FakeDeskDataSource)
  * или ПК (WebSocketDeskDataSource). UI и модели не зависят от выбора.
+ * Медиа отдельно подмешивает LocalMediaSource — локальную сессию устройства,
+ * запасной источник, когда на ПК ничего не играет.
  */
 class DeskViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -33,7 +38,11 @@ class DeskViewModel(app: Application) : AndroidViewModel(app) {
     private var source: DeskDataSource? = null
     private var mirrorJob: Job? = null
 
+    private val localMedia = LocalMediaSource(app, viewModelScope)
+    private var mediaFromLocalDevice = false
+
     init {
+        localMedia.start()
         rebuildSource()
     }
 
@@ -49,12 +58,28 @@ class DeskViewModel(app: Application) : AndroidViewModel(app) {
         }
         source = newSource
         mirrorJob = viewModelScope.launch {
-            newSource.state.collect { _state.value = it }
+            combine(newSource.state, localMedia.state) { pcState, local -> mergeMedia(pcState, local) }
+                .collect { _state.value = it }
         }
     }
 
+    /** ПК в приоритете; локальная сессия устройства подставляется, только когда
+     * на ПК реально ничего не играет (см. LocalMediaSource — сценарий adb-звука). */
+    private fun mergeMedia(pcState: DeskState, local: MediaState?): DeskState {
+        val useLocal = !pcState.media.isPlaying && local != null && local.isPlaying
+        mediaFromLocalDevice = useLocal
+        return if (useLocal) pcState.copy(media = local!!) else pcState
+    }
+
     fun send(command: DeskCommand) {
-        source?.send(command)
+        val handledLocally = mediaFromLocalDevice && when (command) {
+            DeskCommand.TogglePlay -> { localMedia.togglePlay(); true }
+            DeskCommand.NextTrack -> { localMedia.next(); true }
+            DeskCommand.PrevTrack -> { localMedia.prev(); true }
+            is DeskCommand.Seek -> { localMedia.seek(command.fraction); true }
+            else -> false
+        }
+        if (!handledLocally) source?.send(command)
     }
 
     fun applySettings(newSettings: DeskSettings) {
@@ -68,6 +93,7 @@ class DeskViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         source?.stop()
+        localMedia.stop()
         super.onCleared()
     }
 }

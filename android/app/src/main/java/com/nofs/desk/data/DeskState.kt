@@ -18,7 +18,9 @@ data class Metric(
     val accent: AccentTone
 )
 
-/** Состояние медиа-сессии ПК. Пустой title = сессии нет, UI прячет плеер. */
+/** Состояние медиа-сессии. Пустой title = сессии нет, UI прячет плеер.
+ * Источник — либо ПК (через агента), либо локальная сессия устройства
+ * (см. media/LocalMediaSource.kt) — выбирается автоматически в DeskViewModel. */
 data class MediaState(
     val title: String = "",
     val artist: String = "",
@@ -28,7 +30,9 @@ data class MediaState(
     val isPlaying: Boolean = false,
     val sourceApp: String = "",
     /** JPEG/PNG обложка в base64; null — обложки нет, рисуем плейсхолдер. */
-    val artBase64: String? = null
+    val artBase64: String? = null,
+    /** true — трек взят с локальной медиа-сессии устройства, а не с ПК. */
+    val isLocalSource: Boolean = false
 )
 
 /** Кнопка-макрос. app = "" — системный, иначе id приложения из контекста. */
