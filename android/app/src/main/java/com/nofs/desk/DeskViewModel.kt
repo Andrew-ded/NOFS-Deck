@@ -63,10 +63,12 @@ class DeskViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** ПК в приоритете; локальная сессия устройства подставляется, только когда
-     * на ПК реально ничего не играет (см. LocalMediaSource — сценарий adb-звука). */
+    /** ПК в приоритете, только пока реально играет; локальная сессия устройства
+     * подставляется, если у неё есть трек — включая паузу (см. LocalMediaSource —
+     * сценарий adb-звука). Смотрим на наличие трека (title), а не на local.isPlaying:
+     * иначе пауза или мгновенный STATE_BUFFERING при перемотке гасят весь плеер. */
     private fun mergeMedia(pcState: DeskState, local: MediaState?): DeskState {
-        val useLocal = !pcState.media.isPlaying && local != null && local.isPlaying
+        val useLocal = !pcState.media.isPlaying && local != null && local.title.isNotBlank()
         mediaFromLocalDevice = useLocal
         return if (useLocal) pcState.copy(media = local!!) else pcState
     }
