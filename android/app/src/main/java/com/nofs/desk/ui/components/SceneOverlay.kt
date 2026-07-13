@@ -242,7 +242,7 @@ private fun ResultBody(scene: SceneState) {
     Spacer(Modifier.height(20.dp))
     TestCounters(scene)
 //    Spacer(Modifier.weight(1f))
-    LogTail(scene.logTail)ыф
+    LogTail(scene.logTail)
 }
 
 @Composable

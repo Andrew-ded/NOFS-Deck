@@ -56,11 +56,35 @@ public sealed partial class BuildService(List<BuildConfig> builds, string repoPa
             phase, source, task, taskNum, total,
             (int)sw.Elapsed.TotalSeconds, passed, failed, log.ToList()));
 
+        var cwd = cfg.Cwd.Length > 0 ? cfg.Cwd : repoPath;
+
         try
         {
-            var psi = new ProcessStartInfo(cfg.Cmd, cfg.Args)
+            if (string.IsNullOrWhiteSpace(cwd) || !Directory.Exists(cwd))
             {
-                WorkingDirectory = cfg.Cwd.Length > 0 ? cfg.Cwd : repoPath,
+                Updated?.Invoke(new Snapshot("failed", source,
+                    "не задана рабочая папка сборки — укажите cwd в config.json " +
+                    "или выберите папку проекта через «Отправить на планшет»",
+                    0, total, 0, 0, 0, new()));
+                Finished?.Invoke(false, 0);
+                return;
+            }
+
+            // cmd.exe пишет служебные сообщения в OEM-кодировке (866 на RU-Windows),
+            // а мы читаем UTF-8 → кракозябры. chcp 65001 переводит консоль в UTF-8.
+            var args = cfg.Args;
+            var isCmd = Path.GetFileNameWithoutExtension(cfg.Cmd)
+                .Equals("cmd", StringComparison.OrdinalIgnoreCase);
+            if (isCmd && args.TrimStart().StartsWith("/c", StringComparison.OrdinalIgnoreCase)
+                     && !args.Contains("chcp", StringComparison.OrdinalIgnoreCase))
+            {
+                var idx = args.IndexOf("/c", StringComparison.OrdinalIgnoreCase) + 2;
+                args = args[..idx] + " chcp 65001>nul &&" + args[idx..];
+            }
+
+            var psi = new ProcessStartInfo(cfg.Cmd, args)
+            {
+                WorkingDirectory = cwd,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,

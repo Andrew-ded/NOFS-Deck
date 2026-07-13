@@ -203,6 +203,7 @@ class WebSocketDeskDataSource(
                             branch = g.branch,
                             branches = g.branches,
                             repoName = g.repoName,
+                            repoPath = g.repoPath,
                             dirtyFiles = g.dirtyFiles,
                             changes = g.changes,
                             ahead = g.ahead,

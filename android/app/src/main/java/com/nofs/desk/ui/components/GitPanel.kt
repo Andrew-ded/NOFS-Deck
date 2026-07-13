@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Adjust
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.CallMerge
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.CloudUpload
@@ -116,6 +117,27 @@ fun GitPanel(
             }
             GitTab("GitHub", pagerState.currentPage == 1, Modifier.weight(1f)) {
                 scope.launch { pagerState.animateScrollToPage(1) }
+            }
+        }
+
+        // Путь к текущей папке репозитория/сборки
+        if (git.repoPath.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.Folder,
+                    contentDescription = null,
+                    tint = DeskMuted,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    text = git.repoPath,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = JetMono),
+                    color = DeskMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 

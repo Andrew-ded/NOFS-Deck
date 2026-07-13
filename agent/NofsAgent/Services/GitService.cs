@@ -29,7 +29,7 @@ public sealed class GitService(string initialRepoPath)
 
         if (!IsConfigured)
             return new GitMsg("нет репо", 0, 0, 0, false, "",
-                new List<GitLogDto>(), new List<string>(), repoName, new List<string>());
+                new List<GitLogDto>(), new List<string>(), repoName, new List<string>(), RepoPath);
 
         var branch = (await GitAsync("rev-parse --abbrev-ref HEAD")).Trim();
         if (string.IsNullOrEmpty(branch)) branch = "—";
@@ -67,7 +67,7 @@ public sealed class GitService(string initialRepoPath)
         }
 
         return new GitMsg(branch, dirty, ahead, behind, busy, _lastSync,
-            log, branches, repoName, changes);
+            log, branches, repoName, changes, RepoPath);
     }
 
     // ---------- операции ----------

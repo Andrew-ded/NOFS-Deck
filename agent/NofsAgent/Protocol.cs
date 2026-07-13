@@ -65,7 +65,9 @@ public sealed record GitMsg(
     bool Busy, string LastSync, List<GitLogDto> Log,
     List<string> Branches, string RepoName,
     /// изменённые файлы ("M path", "?? path") — для диалога коммита
-    List<string> Changes)
+    List<string> Changes,
+    /// полный путь к папке репозитория/сборки
+    string RepoPath)
 {
     public string Type => "git";
 }

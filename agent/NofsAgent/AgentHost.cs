@@ -144,7 +144,7 @@ public sealed class AgentHost : IDisposable
         var names = new[] { "java", "OpenJDK Platform binary", "MSBuild", "dotnet", "VBCSCompiler" };
         var prev = new Dictionary<int, TimeSpan>();
         var externalShown = false;
-        const int periodMs = 2000;
+        const int periodMs = 1000;
 
         while (!_cts.IsCancellationRequested)
         {
@@ -169,8 +169,8 @@ public sealed class AgentHost : IDisposable
                             finally { p.Dispose(); }
                         }
                     }
-                    // >70% одного ядра за интервал = что-то компилируется
-                    busy = totalDeltaMs > periodMs * 0.7;
+                    // >45% одного ядра за интервал = что-то компилируется
+                    busy = totalDeltaMs > periodMs * 0.45;
                 }
 
                 if (busy && !externalShown)
@@ -321,14 +321,13 @@ public sealed class AgentHost : IDisposable
         if (!Directory.Exists(path))
         {
             Log.Warn($"set-repo: folder not found: {path}");
+            await _server.BroadcastAsync(new ErrorMsg($"Папка не найдена: {path}"));
             return;
         }
+        // Папку принимаем любую: она задаёт и git-панель (покажет «нет репо»,
+        // если .git нет), и рабочий каталог для сборок.
         if (!Directory.Exists(Path.Combine(path, ".git")))
-        {
-            Log.Warn($"set-repo: not a git repo: {path}");
-            await _server.BroadcastAsync(new ErrorMsg($"Папка не является git-репозиторием: {path}"));
-            // всё равно переключим — снапшот покажет «нет репо»
-        }
+            Log.Info($"set-repo: not a git repo (ok for builds): {path}");
 
         Log.Info($"set-repo: {path}");
         _git.RepoPath = path;

@@ -355,6 +355,7 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             branch = "feature/player-morph",
             branches = listOf("master", "feature/player-morph", "fix/reconnect"),
             repoName = "nofs-desk",
+            repoPath = "W:\\MyProject\\NOFSDesk\\android",
             dirtyFiles = 3,
             changes = listOf(
                 "M app/src/main/java/com/nofs/desk/ui/DeskScreen.kt",

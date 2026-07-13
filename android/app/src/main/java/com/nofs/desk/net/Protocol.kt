@@ -99,7 +99,9 @@ data class GitMsg(
     /** Имя папки репозитория (для подписи). */
     val repoName: String = "",
     /** Изменённые файлы ("M path", "?? path") — для диалога коммита. */
-    val changes: List<String> = emptyList()
+    val changes: List<String> = emptyList(),
+    /** Полный путь к папке репозитория/сборки. */
+    val repoPath: String = ""
 )
 
 @Serializable

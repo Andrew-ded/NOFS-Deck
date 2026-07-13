@@ -80,6 +80,7 @@ data class GitState(
     val branch: String = "—",
     val branches: List<String> = emptyList(),  // все локальные ветки
     val repoName: String = "",                 // имя папки репозитория
+    val repoPath: String = "",                 // полный путь к папке
     val dirtyFiles: Int = 0,
     val changes: List<String> = emptyList(),   // "M path" — изменённые файлы
     val ahead: Int = 0,
