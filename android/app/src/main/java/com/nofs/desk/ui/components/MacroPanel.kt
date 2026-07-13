@@ -42,9 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nofs.desk.data.AppContext
 import com.nofs.desk.data.Macro
-import com.nofs.desk.ui.theme.DeskCard
-import com.nofs.desk.ui.theme.DeskMuted
-import com.nofs.desk.ui.theme.DeskText
+import com.nofs.desk.ui.theme.LocalDeskPalette
 import com.nofs.desk.ui.theme.pastel
 
 /**
@@ -64,6 +62,7 @@ fun MacroPanel(
     onMacroClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val palette = LocalDeskPalette.current
     var systemSelected by rememberSaveable { mutableStateOf(false) }
 
     val activeApp = apps.firstOrNull { it.isActive }
@@ -77,7 +76,7 @@ fun MacroPanel(
         Text(
             text = "Контекст",
             style = MaterialTheme.typography.labelMedium,
-            color = DeskMuted
+            color = palette.muted
         )
         Spacer(Modifier.height(6.dp))
         Row(
@@ -109,7 +108,7 @@ fun MacroPanel(
         Text(
             text = if (showSystem) "Система" else "Макросы · ${activeApp!!.label}",
             style = MaterialTheme.typography.labelMedium,
-            color = DeskMuted
+            color = palette.muted
         )
         Spacer(Modifier.height(6.dp))
 
@@ -146,11 +145,12 @@ private fun ContextChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val palette = LocalDeskPalette.current
     val bg by animateColorAsState(
-        targetValue = if (selected) DeskText else DeskCard,
+        targetValue = if (selected) palette.text else palette.card,
         animationSpec = tween(200), label = "chipBg"
     )
-    val fg = if (selected) DeskCard else DeskText
+    val fg = if (selected) palette.card else palette.text
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(18.dp))
@@ -163,7 +163,7 @@ private fun ContextChip(
         Icon(
             imageVector = macroIcon(icon),
             contentDescription = null,
-            tint = if (selected) DeskCard else DeskMuted,
+            tint = if (selected) palette.card else palette.muted,
             modifier = Modifier.size(15.dp)
         )
         Text(
@@ -178,12 +178,13 @@ private fun ContextChip(
 /** Квадратная кнопка макроса: иконка в пастельном круге + подпись. */
 @Composable
 private fun MacroCard(macro: Macro, onClick: () -> Unit) {
+    val palette = LocalDeskPalette.current
     val pastel = macro.accent.pastel()
     Column(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(18.dp))
-            .background(DeskCard)
+            .background(palette.card)
             .clickable(onClick = onClick)
             .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -199,7 +200,7 @@ private fun MacroCard(macro: Macro, onClick: () -> Unit) {
             Icon(
                 imageVector = macroIcon(macro.icon),
                 contentDescription = macro.label,
-                tint = DeskText,
+                tint = palette.text,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -207,7 +208,7 @@ private fun MacroCard(macro: Macro, onClick: () -> Unit) {
         Text(
             text = macro.label,
             style = MaterialTheme.typography.labelSmall,
-            color = DeskText,
+            color = palette.text,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

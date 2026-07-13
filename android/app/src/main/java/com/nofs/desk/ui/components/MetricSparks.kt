@@ -28,10 +28,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nofs.desk.data.Metric
-import com.nofs.desk.ui.theme.DeskCard
-import com.nofs.desk.ui.theme.DeskMuted
-import com.nofs.desk.ui.theme.DeskText
 import com.nofs.desk.ui.theme.JetMono
+import com.nofs.desk.ui.theme.LocalDeskPalette
 import com.nofs.desk.ui.theme.pastel
 
 /**
@@ -82,13 +80,14 @@ private fun MetricSpark(
     points: List<Float>,
     onClick: () -> Unit
 ) {
+    val palette = LocalDeskPalette.current
     val pastel = metric.accent.pastel()
     Box(
         modifier = Modifier
             .width(96.dp)
             .height(46.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(DeskCard)
+            .background(palette.card)
             .clickable(onClick = onClick)
     ) {
         Canvas(Modifier.fillMaxSize()) {
@@ -126,12 +125,12 @@ private fun MetricSpark(
             Text(
                 text = metric.id.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                color = DeskMuted
+                color = palette.muted
             )
             Text(
                 text = metric.primary,
                 style = MaterialTheme.typography.labelMedium.copy(fontFamily = JetMono),
-                color = DeskText
+                color = palette.text
             )
         }
     }

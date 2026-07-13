@@ -32,6 +32,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,16 +58,18 @@ import com.nofs.desk.ui.components.DeskHeader
 import com.nofs.desk.ui.components.MacroPanel
 import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
+import com.nofs.desk.ui.components.MixerPanel
 import com.nofs.desk.ui.components.PlayerSheet
 import com.nofs.desk.ui.components.RightPanel
 import com.nofs.desk.ui.components.Screensaver
 import com.nofs.desk.ui.components.SettingsDialog
 import com.nofs.desk.ui.components.animatePlayerProgress
 import com.nofs.desk.ui.components.rememberMetricHistory
-import com.nofs.desk.ui.theme.DeskBg
+import com.nofs.desk.ui.theme.DarkDeskPalette
 import com.nofs.desk.ui.theme.DeskCard
-import com.nofs.desk.ui.theme.DeskMuted
 import com.nofs.desk.ui.theme.DeskText
+import com.nofs.desk.ui.theme.LightDeskPalette
+import com.nofs.desk.ui.theme.LocalDeskPalette
 
 /**
  * Сборка экрана: две колонки 1.7 : 1.
@@ -84,6 +87,9 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
     var gitVisible by rememberSaveable { mutableStateOf(true) }
     var metricsCompact by rememberSaveable { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    // Игровой режим: отдельная кнопка в шапке, тёмная тема, без Git, громкость на первом плане.
+    var gameMode by rememberSaveable { mutableStateOf(false) }
+    val palette = if (gameMode) DarkDeskPalette else LightDeskPalette
     val playerProgress = animatePlayerProgress(playerOpen)
 
     // История метрик для спарклайнов — копится всегда
@@ -123,15 +129,17 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
         if (!hasMedia && playerOpen) playerOpen = false
     }
 
-    // Правая колонка: плавно схлопывается/разворачивается по весу
-    val rightTarget = if (gitVisible || playerProgress > 0.01f) 1f else 0f
+    // Правая колонка: плавно схлопывается/разворачивается по весу.
+    // В игровом режиме слот (громкость) всегда на месте — его нельзя спрятать.
+    val rightTarget = if (gameMode || gitVisible || playerProgress > 0.01f) 1f else 0f
     val rightWeight by animateFloatAsState(
         targetValue = rightTarget,
         animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
         label = "rightWeight"
     )
 
-    Surface(color = DeskBg, modifier = Modifier.fillMaxSize()) {
+    CompositionLocalProvider(LocalDeskPalette provides palette) {
+    Surface(color = palette.bg, modifier = Modifier.fillMaxSize()) {
       Box(
           Modifier
               .fillMaxSize()
@@ -164,8 +172,10 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                     connection = state.connection,
                     collapse = 0f,
                     onSettingsClick = { showSettings = true },
-                    showGitButton = !gitVisible,
+                    showGitButton = !gameMode && !gitVisible,
                     onGitClick = { gitVisible = true },
+                    gameMode = gameMode,
+                    onGameModeClick = { gameMode = !gameMode },
                     afterClock = if (metricsCompact) {
                         {
                             MetricSparkStrip(
@@ -197,14 +207,14 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                                     modifier = Modifier
                                         .size(28.dp)
                                         .clip(CircleShape)
-                                        .background(DeskCard)
+                                        .background(palette.card)
                                         .clickable { metricsCompact = true },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.UnfoldLess,
                                         contentDescription = "Свернуть метрики",
-                                        tint = DeskMuted,
+                                        tint = palette.muted,
                                         modifier = Modifier.size(15.dp)
                                     )
                                 }
@@ -231,7 +241,22 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                         .fillMaxHeight()
                         .graphicsLayer { alpha = rightWeight }
                 ) {
-                    if (gitVisible && playerProgress < 0.99f) {
+                    if (gameMode && playerProgress < 0.99f) {
+                        // Игровой режим: слот полностью занят громкостью, без Git/Времени.
+                        MixerPanel(
+                            audio = state.audio,
+                            onMaster = { viewModel.send(DeskCommand.AudioMaster(it)) },
+                            onMuteMaster = { viewModel.send(DeskCommand.AudioMuteMaster) },
+                            onMuteMic = { viewModel.send(DeskCommand.AudioMuteMic) },
+                            onSession = { id, v ->
+                                viewModel.send(DeskCommand.AudioSessionVolume(id, v))
+                            },
+                            onMuteSession = { viewModel.send(DeskCommand.AudioMuteSession(it)) },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = 1f - playerProgress }
+                        )
+                    } else if (gitVisible && playerProgress < 0.99f) {
                         RightPanel(
                             git = state.git,
                             audio = state.audio,
@@ -308,6 +333,7 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
             onDismiss = { saverActive = false }
         )
       }
+    }
     }
 
     if (showSettings) {

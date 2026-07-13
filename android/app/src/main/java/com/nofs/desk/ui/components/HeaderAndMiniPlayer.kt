@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,11 +54,8 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import com.nofs.desk.data.ConnectionStatus
 import com.nofs.desk.data.MediaState
-import com.nofs.desk.ui.theme.DeskCard
-import com.nofs.desk.ui.theme.DeskHandle
-import com.nofs.desk.ui.theme.DeskMuted
-import com.nofs.desk.ui.theme.DeskText
 import com.nofs.desk.ui.theme.JetMono
+import com.nofs.desk.ui.theme.LocalDeskPalette
 import com.nofs.desk.ui.theme.PlayerBg
 import com.nofs.desk.ui.theme.PlayerCard
 import com.nofs.desk.ui.theme.PlayerMuted
@@ -91,9 +89,13 @@ fun DeskHeader(
     /** Круглая кнопка Git-панели рядом с чипом ПК (видна, когда панель спрятана). */
     showGitButton: Boolean = false,
     onGitClick: () -> Unit = {},
+    /** Игровой режим: тёмная тема, без Git, громкость на первом плане. */
+    gameMode: Boolean = false,
+    onGameModeClick: () -> Unit = {},
     /** Слот справа от часов — компактные графики метрик. */
     afterClock: (@Composable () -> Unit)? = null
 ) {
+    val palette = LocalDeskPalette.current
     val clockSize = lerp(56.sp, 26.sp, collapse)
     val vPad by animateDpAsState(
         targetValue = androidx.compose.ui.unit.lerp(10.dp, 2.dp, collapse),
@@ -112,13 +114,13 @@ fun DeskHeader(
                 fontFamily = JetMono,
                 fontWeight = FontWeight.Medium,
                 fontSize = clockSize,
-                color = DeskText
+                color = palette.text
             )
             if (collapse < 0.6f) {
                 Text(
                     text = date,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = DeskMuted
+                    color = palette.muted
                 )
             }
         }
@@ -129,6 +131,8 @@ fun DeskHeader(
         } else {
             Spacer(Modifier.weight(1f))
         }
+        GameModeButton(active = gameMode, onClick = onGameModeClick)
+        Spacer(Modifier.width(8.dp))
         ConnectionChip(hostName, connection, onSettingsClick)
         AnimatedVisibility(
             visible = showGitButton,
@@ -141,19 +145,42 @@ fun DeskHeader(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(DeskCard)
+                        .background(palette.card)
                         .clickable(onClick = onGitClick),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.AccountTree,
                         contentDescription = "Показать Git-панель",
-                        tint = DeskMuted,
+                        tint = palette.muted,
                         modifier = Modifier.size(17.dp)
                     )
                 }
             }
         }
+    }
+}
+
+/** Отдельная кнопка входа/выхода из игрового режима — всегда на виду в шапке. */
+@Composable
+private fun GameModeButton(active: Boolean, onClick: () -> Unit) {
+    val palette = LocalDeskPalette.current
+    val bg = if (active) palette.text else palette.card
+    val fg = if (active) palette.card else palette.muted
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(bg)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.SportsEsports,
+            contentDescription = if (active) "Выйти из игрового режима" else "Игровой режим",
+            tint = fg,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
@@ -163,6 +190,7 @@ private fun ConnectionChip(
     connection: ConnectionStatus,
     onClick: () -> Unit
 ) {
+    val palette = LocalDeskPalette.current
     val (dotColor, label) = when (connection) {
         ConnectionStatus.DEMO -> Sand.bar to "демо"
         ConnectionStatus.CONNECTING -> Sand.bar to "подключение…"
@@ -172,7 +200,7 @@ private fun ConnectionChip(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(18.dp))
-            .background(DeskCard)
+            .background(palette.card)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -187,12 +215,12 @@ private fun ConnectionChip(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = DeskText
+            color = palette.text
         )
         Icon(
             imageVector = Icons.Rounded.Tune,
             contentDescription = "Настройки",
-            tint = DeskMuted,
+            tint = palette.muted,
             modifier = Modifier.size(16.dp)
         )
     }
@@ -280,6 +308,7 @@ fun MiniPlayer(
     onTogglePlay: () -> Unit,
     onOpenPlayer: () -> Unit
 ) {
+    val palette = LocalDeskPalette.current
     val art = rememberArtBitmap(media.artBase64)
     val alpha by animateFloatAsState(
         targetValue = if (playerOpen) 0.45f else 1f,
@@ -290,7 +319,7 @@ fun MiniPlayer(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(DeskCard.copy(alpha = alpha))
+            .background(palette.card.copy(alpha = alpha))
             .clickable(onClick = onOpenPlayer)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -300,7 +329,7 @@ fun MiniPlayer(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(DeskHandle),
+                .background(palette.handle),
             contentAlignment = Alignment.Center
         ) {
             if (art != null) {
@@ -314,7 +343,7 @@ fun MiniPlayer(
                 Icon(
                     imageVector = Icons.Rounded.MusicNote,
                     contentDescription = null,
-                    tint = DeskMuted,
+                    tint = palette.muted,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -324,14 +353,14 @@ fun MiniPlayer(
             Text(
                 text = media.title,
                 style = MaterialTheme.typography.titleMedium,
-                color = DeskText,
+                color = palette.text,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = if (media.artist.isBlank()) media.sourceApp else media.artist,
                 style = MaterialTheme.typography.bodySmall,
-                color = DeskMuted,
+                color = palette.muted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -340,13 +369,13 @@ fun MiniPlayer(
             Icon(
                 imageVector = if (media.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                 contentDescription = if (media.isPlaying) "Пауза" else "Играть",
-                tint = DeskText
+                tint = palette.text
             )
         }
         Icon(
             imageVector = Icons.Rounded.KeyboardArrowRight,
             contentDescription = "Открыть плеер",
-            tint = DeskMuted
+            tint = palette.muted
         )
     }
 }
