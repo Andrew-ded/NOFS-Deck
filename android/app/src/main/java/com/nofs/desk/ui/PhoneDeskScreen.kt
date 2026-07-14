@@ -101,9 +101,17 @@ fun PhoneDeskScreen(viewModel: DeskViewModel = viewModel()) {
         }
     }
 
+    // GitHub — один раз за сеанс подключения (не в PhoneGitPanel: та монтируется
+    // и размонтируется при каждом открытии/закрытии плеера, и повторный запрос
+    // там дёргал стейт посреди анимации слайда — лаги/дёрганье плеера).
+    var githubRequested by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.connection) {
         if (state.connection == ConnectionStatus.CONNECTED) {
             viewModel.send(DeskCommand.GitRefresh)
+            if (!githubRequested) {
+                githubRequested = true
+                viewModel.send(DeskCommand.GitHubRefresh)
+            }
         }
     }
 
@@ -297,7 +305,6 @@ private fun PhoneGitAndPlayerSlot(
                 git = state.git,
                 builds = state.builds,
                 onRunBuild = { onCommand(DeskCommand.RunBuild(it)) },
-                onGitHubRefresh = { onCommand(DeskCommand.GitHubRefresh) },
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer { alpha = 1f - playerProgress }
