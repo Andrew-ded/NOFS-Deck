@@ -199,6 +199,16 @@ data class RemoteTypeStateMsg(val active: Boolean = false)
 @Serializable
 data class RemoteKeyMsg(val kind: String = "char", val value: String = "")
 
+/** «Паспорт файла»: активный исходник в IDE. fileName == "" — скрыть карточку. */
+@Serializable
+data class FilePassportMsg(
+    val fileName: String = "",
+    val relativePath: String = "",
+    val declares: List<String> = emptyList(),
+    val dependencies: List<String> = emptyList(),
+    val usedIn: List<String> = emptyList()
+)
+
 // ---------- планшет -> агент ----------
 
 object Cmd {

@@ -142,6 +142,18 @@ public sealed record RemoteKeyMsg(string Kind, string Value)
     public string Type => "remoteKey";
 }
 
+/// <summary>
+/// «Паспорт файла»: активный исходник в IDE — что объявляет, от чего зависит,
+/// где встречается в остальном репозитории. FileName == "" — скрыть карточку
+/// (пользователь ушёл из IDE/не на распознанном файле).
+/// </summary>
+public sealed record FilePassportMsg(
+    string FileName, string RelativePath,
+    List<string> Declares, List<string> Dependencies, List<string> UsedIn)
+{
+    public string Type => "filePassport";
+}
+
 // ---------- планшет -> агент ----------
 
 public sealed class CmdMsg

@@ -25,6 +25,7 @@ public sealed class AgentHost : IDisposable
     private readonly BuildService _build;
     private readonly DailyService _daily;
     private readonly RemoteTypeService _remoteType;
+    private readonly FilePassportService _filePassport;
     private readonly CancellationTokenSource _cts = new();
     private volatile bool _sceneBusy;   // идёт своя сборка — внешнюю детекцию глушим
 
@@ -44,6 +45,7 @@ public sealed class AgentHost : IDisposable
         _build = new BuildService(config.Builds, config.RepoPath);
         _daily = new DailyService(config.RepoPath);
         _remoteType = new RemoteTypeService(config.RemoteType.Hotkey);
+        _filePassport = new FilePassportService(() => _config.RepoPath);
 
         _server = new WsServer(config.Port);
         _server.CommandReceived += cmd => _ = HandleCommandAsync(cmd);
@@ -117,6 +119,8 @@ public sealed class AgentHost : IDisposable
     {
         await _server.BroadcastAsync(_context.Read());
         await _server.BroadcastAsync(_audio.Read());
+        var passport = _filePassport.Tick();
+        if (passport != null) await _server.BroadcastAsync(passport);
     }
 
     /// <summary>Плейтайм тикает всегда (даже без планшета), пуш — раз в 30 с.</summary>
