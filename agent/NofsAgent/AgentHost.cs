@@ -25,6 +25,7 @@ public sealed class AgentHost : IDisposable
     private readonly ClipboardService _clipboard = new();
     private readonly BuildService _build;
     private readonly DailyService _daily;
+    private readonly RemoteTypeService _remoteType;
     private readonly CancellationTokenSource _cts = new();
     private volatile bool _sceneBusy;   // идёт своя сборка — внешнюю детекцию глушим
 
@@ -43,12 +44,21 @@ public sealed class AgentHost : IDisposable
         _playtime = new PlaytimeService(config.Apps);
         _build = new BuildService(config.Builds, config.RepoPath);
         _daily = new DailyService(config.RepoPath);
+        _remoteType = new RemoteTypeService(config.RemoteType.Hotkey);
 
         _server = new WsServer(config.Port);
         _server.CommandReceived += cmd => _ = HandleCommandAsync(cmd);
         _server.ClientConnected += SendSnapshotAsync;
-        _server.ClientCountChanged += n => ClientCountChanged?.Invoke(n);
+        _server.ClientCountChanged += n =>
+        {
+            ClientCountChanged?.Invoke(n);
+            if (n == 0) _remoteType.Deactivate(); // планшет пропал — не держать чужую клавиатуру
+        };
         _server.RepoChangeRequested += SetRepoAsync;
+        _remoteType.ActiveChanged += active =>
+            _ = _server.BroadcastAsync(new RemoteTypeStateMsg(active));
+        _remoteType.KeyEvent += (kind, value) =>
+            _ = _server.BroadcastAsync(new RemoteKeyMsg(kind, value));
         _clipboard.Changed += item =>
             _ = _server.BroadcastAsync(new ClipboardMsg(item.Text, item.Kind));
         _build.Updated += s =>
@@ -75,6 +85,7 @@ public sealed class AgentHost : IDisposable
 
         _server.Start();
         _clipboard.Start();                      // QR-мост буфера обмена
+        _remoteType.Start();                      // клавиатура ПК -> планшет
         _ = LoopAsync(1000, PushFastAsync);      // метрики + медиа
         _ = LoopAsync(2000, PushContextAsync);   // активное окно + аудио
         _ = PlaytimeLoopAsync();                 // учёт времени (тикает и без клиентов)
@@ -222,6 +233,7 @@ public sealed class AgentHost : IDisposable
             _build.List().Select(b => new BuildOptionDto(b.id, b.label)).ToList()));
         await _server.SendAsync(clientId, _daily.Snapshot());
         await _server.SendAsync(clientId, await _git.SnapshotAsync());
+        await _server.SendAsync(clientId, new RemoteTypeStateMsg(_remoteType.Active));
     }
 
     // ---------- команды планшета ----------
@@ -282,6 +294,10 @@ public sealed class AgentHost : IDisposable
                 break;
             case "cancelBuild":
                 _build.Cancel();
+                break;
+
+            case "remoteTypeStop":
+                _remoteType.Deactivate();
                 break;
 
             case "githubRefresh":
@@ -352,5 +368,6 @@ public sealed class AgentHost : IDisposable
         _playtime.Dispose();   // финальный сейв playtime.json
         _clipboard.Dispose();
         _build.Dispose();
+        _remoteType.Dispose();
     }
 }

@@ -136,6 +136,18 @@ public sealed record DailyMsg(
     public string Type => "daily";
 }
 
+/// <summary>Режим «клавиатура ПК → планшет» включён/выключен (хоткей на ПК).</summary>
+public sealed record RemoteTypeStateMsg(bool Active)
+{
+    public string Type => "remoteTypeState";
+}
+
+/// <summary>Одна клавиша из режима remote-type. Kind: "char" | "special".</summary>
+public sealed record RemoteKeyMsg(string Kind, string Value)
+{
+    public string Type => "remoteKey";
+}
+
 // ---------- планшет -> агент ----------
 
 public sealed class CmdMsg

@@ -194,6 +194,14 @@ data class DailyMsg(
     val fixmeCount: Int = -1
 )
 
+/** Режим «клавиатура ПК → планшет» включён/выключен (хоткей на ПК). */
+@Serializable
+data class RemoteTypeStateMsg(val active: Boolean = false)
+
+/** Одна клавиша из режима remote-type. kind: "char" | "special". */
+@Serializable
+data class RemoteKeyMsg(val kind: String = "char", val value: String = "")
+
 // ---------- планшет -> агент ----------
 
 object Cmd {
@@ -239,6 +247,10 @@ object Cmd {
 
     fun cancelBuild(): JsonObject = buildJsonObject {
         put("type", "cmd"); put("cmd", "cancelBuild")
+    }
+
+    fun remoteTypeStop(): JsonObject = buildJsonObject {
+        put("type", "cmd"); put("cmd", "remoteTypeStop")
     }
 }
 

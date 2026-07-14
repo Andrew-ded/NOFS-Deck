@@ -294,6 +294,29 @@ class WebSocketDeskDataSource(
                     }
                 }
             }
+            "remoteTypeState" -> {
+                val r = ProtocolJson.decodeFromJsonElement<RemoteTypeStateMsg>(obj)
+                _state.update {
+                    it.copy(
+                        remoteTypeActive = r.active,
+                        // новая сессия печати всегда стартует с пустого буфера
+                        remoteTypeBuffer = if (r.active) "" else it.remoteTypeBuffer
+                    )
+                }
+            }
+            "remoteKey" -> {
+                val r = ProtocolJson.decodeFromJsonElement<RemoteKeyMsg>(obj)
+                _state.update { st ->
+                    if (!st.remoteTypeActive) return@update st
+                    val buf = st.remoteTypeBuffer
+                    val next = when {
+                        r.kind == "char" -> buf + r.value
+                        r.kind == "special" && r.value == "backspace" -> buf.dropLast(1)
+                        else -> buf // tab/enter/delete/стрелки — вне MVP, не влияют на буфер
+                    }
+                    st.copy(remoteTypeBuffer = next)
+                }
+            }
             "error" -> {
                 val e = ProtocolJson.decodeFromJsonElement<ErrorMsg>(obj)
                 if (e.message.isNotBlank()) {
@@ -372,6 +395,7 @@ class WebSocketDeskDataSource(
             is DeskCommand.AudioMuteSession -> Cmd.audioMuteSession(command.id)
             is DeskCommand.RunBuild -> Cmd.runBuild(command.id)
             DeskCommand.CancelBuild -> Cmd.cancelBuild()
+            DeskCommand.RemoteTypeStop -> Cmd.remoteTypeStop()
         }
         ws?.send(json.toString())
     }

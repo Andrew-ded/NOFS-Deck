@@ -2,6 +2,9 @@
   "port": 48484,
   "discoveryPort": 48485,
   "repoPath": "C:\\dev\\MyRepo",
+  "remoteType": {
+    "hotkey": "scrolllock"
+  },
   "github": {
     "repo": "",
     "token": ""

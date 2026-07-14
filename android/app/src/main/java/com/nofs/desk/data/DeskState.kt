@@ -172,7 +172,11 @@ data class DeskState(
     val clipboard: ClipboardEvent? = null,
     val scene: SceneState = SceneState(),
     val daily: DailySummary = DailySummary(),
-    val builds: List<BuildOption> = emptyList()
+    val builds: List<BuildOption> = emptyList(),
+    /** Хоткей на ПК включил ввод физической клавиатуры на планшет. */
+    val remoteTypeActive: Boolean = false,
+    /** Текст, набранный с клавиатуры ПК в режиме remote-type (пока только поле коммита). */
+    val remoteTypeBuffer: String = ""
 )
 
 /** Команды планшета к источнику данных. */
@@ -196,4 +200,5 @@ sealed interface DeskCommand {
     data class AudioMuteSession(val id: String) : DeskCommand
     data class RunBuild(val id: String) : DeskCommand
     data object CancelBuild : DeskCommand
+    data object RemoteTypeStop : DeskCommand
 }
