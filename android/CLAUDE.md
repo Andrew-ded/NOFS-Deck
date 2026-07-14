@@ -14,6 +14,11 @@
 монтирование отстаёт от реального диска Windows (Edit/Read работают с реальным W:\,
 их и видит Android Studio). Новые UI-панели используют `LocalDeskPalette.current`.
 
+**Каждый PR с изменениями Android-приложения бампает версию** в
+`android/app/build.gradle.kts` (`defaultConfig`): `versionCode` +1,
+`versionName` — patch (`1.0.1` -> `1.0.2`). Без исключений, даже для
+маленьких фиксов.
+
 ГОТОВО (не проверено компилятором — собрать обе стороны на ПК):
 - **Сцена «Тень билда» (ф.7+10)**: протокол `scene` (phase idle/running/external/
   success/failed) + `daily` + `builds`; агент `Services/BuildService.cs` (запуск
