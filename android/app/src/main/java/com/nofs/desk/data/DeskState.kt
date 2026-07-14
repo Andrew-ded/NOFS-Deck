@@ -100,9 +100,6 @@ enum class ConnectionStatus { DEMO, CONNECTING, CONNECTED, DISCONNECTED }
 /** Ошибка с агента; timestamp — чтобы одинаковые тексты показывались повторно. */
 data class ErrorEvent(val message: String, val at: Long)
 
-/** Новый текст/ссылка из буфера ПК — планшет показывает QR транзиентно. */
-data class ClipboardEvent(val text: String, val kind: String, val at: Long)
-
 enum class ScenePhase { IDLE, RUNNING, EXTERNAL, SUCCESS, FAILED }
 
 /** Live-статус долгого действия на ПК (сборка/тесты) — полноэкранная сцена. */
@@ -169,7 +166,6 @@ data class DeskState(
     val audio: AudioState = AudioState(),
     val playtime: PlaytimeState = PlaytimeState(),
     val error: ErrorEvent? = null,
-    val clipboard: ClipboardEvent? = null,
     val scene: SceneState = SceneState(),
     val daily: DailySummary = DailySummary(),
     val builds: List<BuildOption> = emptyList(),

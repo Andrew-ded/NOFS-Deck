@@ -13,11 +13,6 @@ Unisoc T606, альбомная ориентация). Проект собран
 их и видит Android Studio). Новые UI-панели используют `LocalDeskPalette.current`.
 
 ГОТОВО (не проверено компилятором — собрать обе стороны на ПК):
-- **QR-мост буфера (ф.8)**: агент `Services/ClipboardService.cs` (STA-поток +
-  AddClipboardFormatListener, фильтр чувствительных строк LooksSensitive);
-  протокол `clipboard`; планшет `ui/components/QrOverlay.kt` (ZXing, зависимость
-  `zxing-core` в libs.versions.toml, карточка снизу-справа с кольцом-таймером 15с,
-  тап = крупный QR).
 - **Сцена «Тень билда» (ф.7+10)**: протокол `scene` (phase idle/running/external/
   success/failed) + `daily` + `builds`; агент `Services/BuildService.cs` (запуск
   сборки из config `builds[]`, парсинг gradle `> Task`/dotnet, счётчики тестов,
@@ -32,8 +27,8 @@ Unisoc T606, альбомная ориентация). Проект собран
 - «Отправить на планшет» теперь принимает папку БЕЗ .git (задаёт и git-панель,
   и cwd сборок).
 - **Remote typing (ф.2)**: агент `Services/RemoteTypeService.cs` — низкоуровневый
-  хук `WH_KEYBOARD_LL` на своём STA-потоке (message pump, как у ClipboardService,
-  иначе хук не работает надёжно); тоггл-хоткей из `config.json` (`remoteType.hotkey`,
+  хук `WH_KEYBOARD_LL` на своём STA-потоке (message pump, иначе хук не работает
+  надёжно); тоггл-хоткей из `config.json` (`remoteType.hotkey`,
   по умолчанию Scroll Lock) включает режим, глотает ВСЕ нажатия (до активного
   окна ПК не долетают), транслирует их в текст через `ToUnicodeEx` со своей
   копией keyState (реальные Shift/Ctrl/Alt/CapsLock не обновляются, т.к. ОС
@@ -60,6 +55,10 @@ Unisoc T606, альбомная ориентация). Проект собран
   `assembleDebug` тесты не гоняет, а `test` печатает `N tests completed, M failed`
   — этот формат парсер пока НЕ ловит. Нужно доработать regex + добавить в config
   сборку с тестами. Автотестов у самого проекта (агент C#, планшет Kotlin) нет.
+
+УБРАНО: **QR-мост буфера (ф.8)** — был реализован (агент ClipboardService.cs,
+протокол `clipboard`, планшет QrOverlay.kt на ZXing), но идею признали
+неактуальной и весь код убрали (агент/планшет/зависимость zxing-core).
 
 ОСТАЛОСЬ (задачи): паспорт файла (ф.9), Obsidian (ф.1), git-дифф+«пока меня не
 было» (ф.4), логи (ф.5), предиктивные алерты (ф.3), presence (ф.6).

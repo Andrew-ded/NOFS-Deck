@@ -6,7 +6,6 @@ import com.nofs.desk.data.AppContext
 import com.nofs.desk.data.AudioSession
 import com.nofs.desk.data.AudioState
 import com.nofs.desk.data.BuildOption
-import com.nofs.desk.data.ClipboardEvent
 import com.nofs.desk.data.DailySummary
 import com.nofs.desk.data.ScenePhase
 import com.nofs.desk.data.SceneState
@@ -284,14 +283,6 @@ class WebSocketDeskDataSource(
                             fixmeCount = d.fixmeCount
                         )
                     )
-                }
-            }
-            "clipboard" -> {
-                val c = ProtocolJson.decodeFromJsonElement<ClipboardMsg>(obj)
-                if (c.text.isNotBlank()) {
-                    _state.update {
-                        it.copy(clipboard = ClipboardEvent(c.text, c.kind, System.currentTimeMillis()))
-                    }
                 }
             }
             "remoteTypeState" -> {

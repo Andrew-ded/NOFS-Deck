@@ -106,12 +106,6 @@ public sealed record PlaytimeMsg(
     public string Type => "playtime";
 }
 
-/// <summary>Новый текст/ссылка из буфера ПК — планшет покажет QR.</summary>
-public sealed record ClipboardMsg(string Text, string Kind)
-{
-    public string Type => "clipboard";
-}
-
 /// <summary>Live-статус сборки/тестов — полноэкранная сцена.</summary>
 public sealed record SceneMsg(
     string Phase, string Source, string Task,

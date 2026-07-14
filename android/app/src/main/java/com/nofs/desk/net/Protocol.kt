@@ -157,9 +157,6 @@ data class PlaytimeMsg(
 )
 
 @Serializable
-data class ClipboardMsg(val text: String = "", val kind: String = "text")
-
-@Serializable
 data class BuildOptionDto(val id: String, val label: String)
 
 @Serializable

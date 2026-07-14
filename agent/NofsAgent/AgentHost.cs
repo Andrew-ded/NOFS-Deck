@@ -22,7 +22,6 @@ public sealed class AgentHost : IDisposable
     private readonly GitHubService _github;
     private readonly AudioService _audio = new();
     private readonly PlaytimeService _playtime;
-    private readonly ClipboardService _clipboard = new();
     private readonly BuildService _build;
     private readonly DailyService _daily;
     private readonly RemoteTypeService _remoteType;
@@ -59,8 +58,6 @@ public sealed class AgentHost : IDisposable
             _ = _server.BroadcastAsync(new RemoteTypeStateMsg(active));
         _remoteType.KeyEvent += (kind, value) =>
             _ = _server.BroadcastAsync(new RemoteKeyMsg(kind, value));
-        _clipboard.Changed += item =>
-            _ = _server.BroadcastAsync(new ClipboardMsg(item.Text, item.Kind));
         _build.Updated += s =>
         {
             _sceneBusy = s.Phase is "running";
@@ -84,7 +81,6 @@ public sealed class AgentHost : IDisposable
             : _config.GitHub.Repo;
 
         _server.Start();
-        _clipboard.Start();                      // QR-мост буфера обмена
         _remoteType.Start();                      // клавиатура ПК -> планшет
         _ = LoopAsync(1000, PushFastAsync);      // метрики + медиа
         _ = LoopAsync(2000, PushContextAsync);   // активное окно + аудио
@@ -366,7 +362,6 @@ public sealed class AgentHost : IDisposable
         _metrics.Dispose();
         _audio.Dispose();
         _playtime.Dispose();   // финальный сейв playtime.json
-        _clipboard.Dispose();
         _build.Dispose();
         _remoteType.Dispose();
     }

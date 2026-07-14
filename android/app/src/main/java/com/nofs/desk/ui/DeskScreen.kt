@@ -62,7 +62,6 @@ import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
 import com.nofs.desk.ui.components.MixerPanel
 import com.nofs.desk.ui.components.PlayerSheet
-import com.nofs.desk.ui.components.QrOverlay
 import com.nofs.desk.ui.components.SceneOverlay
 import com.nofs.desk.ui.components.RightPanel
 import com.nofs.desk.ui.components.Screensaver
@@ -338,9 +337,6 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
                 contentColor = DeskCard
             )
         }
-
-        // QR-мост буфера обмена — транзиентная карточка снизу-справа
-        QrOverlay(event = state.clipboard)
 
         // Полноэкранная сцена сборки/тестов («Тень билда»)
         var sceneDismissed by remember { mutableLongStateOf(0L) }
