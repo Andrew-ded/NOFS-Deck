@@ -58,6 +58,7 @@ import com.nofs.desk.data.ScenePhase
 import com.nofs.desk.data.SceneState
 import com.nofs.desk.ui.components.BottomPlayerPill
 import com.nofs.desk.ui.components.DeskHeader
+import com.nofs.desk.ui.components.FilePassportCard
 import com.nofs.desk.ui.components.MacroPanel
 import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
@@ -333,6 +334,16 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
                 media = state.media,
                 onTogglePlay = { viewModel.send(DeskCommand.TogglePlay) },
                 onOpenPlayer = { playerOpen = true }
+            )
+        }
+
+        // «Паспорт файла» (ф.9) — снизу слева, вне игрового режима (там не про код)
+        if (!gameMode) {
+            FilePassportCard(
+                state = state.filePassport,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 4.dp, bottom = 10.dp)
             )
         }
 

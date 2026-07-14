@@ -16,6 +16,7 @@ import com.nofs.desk.data.DeskCommand
 import com.nofs.desk.data.DeskDataSource
 import com.nofs.desk.data.DeskState
 import com.nofs.desk.data.ErrorEvent
+import com.nofs.desk.data.FilePassportState
 import com.nofs.desk.data.GitCommitEntry
 import com.nofs.desk.data.GitHubIssue
 import com.nofs.desk.data.GitHubPullRequest
@@ -329,6 +330,21 @@ class WebSocketDeskDataSource(
                             issues = g.issues.map {
                                 GitHubIssue(it.number, it.title, it.labels, it.updated)
                             }
+                        )
+                    )
+                }
+            }
+            "filePassport" -> {
+                val f = ProtocolJson.decodeFromJsonElement<FilePassportMsg>(obj)
+                _state.update {
+                    it.copy(
+                        filePassport = FilePassportState(
+                            fileName = f.fileName,
+                            relativePath = f.relativePath,
+                            declares = f.declares,
+                            dependencies = f.dependencies,
+                            usedIn = f.usedIn,
+                            at = System.currentTimeMillis()
                         )
                     )
                 }

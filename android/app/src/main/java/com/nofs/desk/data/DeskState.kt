@@ -119,6 +119,20 @@ data class SceneState(
 /** Настроенная на ПК сборка — кнопка запуска на планшете. */
 data class BuildOption(val id: String, val label: String)
 
+/**
+ * «Паспорт файла»: активный исходник в IDE (транзиентная карточка, только
+ * планшет). fileName пустой = карточки нет — источник правды для видимости,
+ * а не отдельный Boolean, чтобы не разъезжались с содержимым.
+ */
+data class FilePassportState(
+    val fileName: String = "",
+    val relativePath: String = "",
+    val declares: List<String> = emptyList(),
+    val dependencies: List<String> = emptyList(),
+    val usedIn: List<String> = emptyList(),
+    val at: Long = 0L                // штамп прихода — для автозакрытия/переоткрытия
+)
+
 /** Сводка дня — вторая строка скринсейвера. */
 data class DailySummary(
     val buildsToday: Int = 0,
@@ -172,7 +186,8 @@ data class DeskState(
     /** Хоткей на ПК включил ввод физической клавиатуры на планшет. */
     val remoteTypeActive: Boolean = false,
     /** Текст, набранный с клавиатуры ПК в режиме remote-type (пока только поле коммита). */
-    val remoteTypeBuffer: String = ""
+    val remoteTypeBuffer: String = "",
+    val filePassport: FilePassportState = FilePassportState()
 )
 
 /** Команды планшета к источнику данных. */
