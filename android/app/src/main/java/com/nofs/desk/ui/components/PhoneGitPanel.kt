@@ -30,7 +30,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,21 +52,21 @@ import com.nofs.desk.ui.theme.Sage
  * веток — только кнопки сборки (место фиксировано, см. android/CLAUDE.md
  * про «Тень билда») и граф коммитов на первой странице; PR/Issues с
  * GitHub — свайпом на второй, тап по строке открывает ссылку в браузере.
- * GitHub подтягивается автоматически при первом показе (не по свайпу,
- * как на планшете).
+ * GitHub подтягивается автоматически, но НЕ здесь — см. PhoneDeskScreen
+ * (запрос при коннекте, один раз за экран). Эта панель монтируется и
+ * размонтируется при каждом открытии/закрытии плеера (условная композиция
+ * в PhoneGitAndPlayerSlot) — если бы запрос жил тут, он бы дублировался
+ * на каждый тап по плееру и рвал анимацию слайда лишними перерисовками.
  */
 @Composable
 fun PhoneGitPanel(
     git: GitState,
     builds: List<BuildOption>,
     onRunBuild: (String) -> Unit,
-    onGitHubRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val palette = LocalDeskPalette.current
     val pagerState = rememberPagerState(pageCount = { 2 })
-
-    LaunchedEffect(Unit) { onGitHubRefresh() }
 
     Column(
         modifier = modifier
