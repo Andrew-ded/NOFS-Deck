@@ -457,8 +457,9 @@ private fun BigMuteButton(muted: Boolean, accent: Pastel, onClick: () -> Unit) {
     }
 }
 
+/** Точки-индикатор текущей страницы пейджера (переиспользуется PhoneGitPanel). */
 @Composable
-private fun PagerDots(count: Int, current: Int) {
+fun PagerDots(count: Int, current: Int) {
     if (count <= 1) return
     val palette = LocalDeskPalette.current
     Row(

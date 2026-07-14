@@ -138,6 +138,37 @@ fun MacroPanel(
     }
 }
 
+/**
+ * Телефон: один плоский набор кнопок — макросы активного приложения (если
+ * есть) + системные, единым списком без чипов-переключателей и подписей
+ * (контекст на телефонном экране убран целиком, см. PhoneDeskScreen.kt).
+ * Сетка со скроллом (в отличие от планшетной — на телефоне высоты может
+ * не хватить под все кнопки сразу).
+ */
+@Composable
+fun PhoneMacroPanel(
+    apps: List<AppContext>,
+    macros: List<Macro>,
+    onMacroClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val activeApp = apps.firstOrNull { it.isActive }
+    val appMacros = activeApp?.let { a -> macros.filter { it.app == a.id } }.orEmpty()
+    val systemMacros = macros.filter { it.app.isBlank() || it.app == "system" }
+    val shown = appMacros + systemMacros
+
+    LazyVerticalGrid(
+        columns = GridCells.FixedSize(size = 92.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxSize()
+    ) {
+        items(shown, key = { it.id }) { macro ->
+            MacroCard(macro) { onMacroClick(macro.id) }
+        }
+    }
+}
+
 @Composable
 private fun ContextChip(
     label: String,
