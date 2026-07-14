@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
@@ -75,14 +76,25 @@ import com.nofs.desk.ui.theme.LightDeskPalette
 import com.nofs.desk.ui.theme.LocalDeskPalette
 
 /**
- * Сборка экрана: две колонки 1.7 : 1.
+ * Точка входа экрана: планшет (smallestScreenWidthDp >= 600, стандартный
+ * Material-порог) получает прежний полнофункциональный layout, телефон —
+ * урезанный PhoneDeskScreen (портрет+альбом, см. PhoneDeskScreen.kt).
+ */
+@Composable
+fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
+    val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
+    if (isTablet) TabletDeskScreen(viewModel) else PhoneDeskScreen(viewModel)
+}
+
+/**
+ * Сборка планшетного экрана: две колонки 1.7 : 1.
  * Слева — шапка + мини-плеер + метрики + контекстные макросы (без скролла,
  * сетка адаптивная — при спрятанном Git кнопок в ряду помещается больше).
  * Справа — слот Git-панели: прячется с анимацией, возвращается круглой
  * кнопкой у чипа ПК; чёрный плеер выезжает В ЭТОМ слоте, подменяя её.
  */
 @Composable
-fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
+private fun TabletDeskScreen(viewModel: DeskViewModel) {
     val state by viewModel.state.collectAsState()
     val settings by viewModel.settings.collectAsState()
 

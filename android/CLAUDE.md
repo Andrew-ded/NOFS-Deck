@@ -1,9 +1,11 @@
 # NOFS Desk — контекст для агента
 
 ## Что это
-Планшет-компаньон: панель управления Windows-ПК на Android-планшете (Teclast P40HD,
-Unisoc T606, альбомная ориентация). Проект собран целиком: Android-приложение
-(демо-режим + реальный WebSocket-источник) и .NET-агент в трее на ПК.
+Панель управления Windows-ПК на Android. Основное устройство — планшет
+(Teclast P40HD, Unisoc T606, жёстко альбомная ориентация); отдельно есть
+урезанный экран для телефона (портрет+альбом, см. ниже). Проект собран
+целиком: Android-приложение (демо-режим + реальный WebSocket-источник)
+и .NET-агент в трее на ПК.
 
 ## Ветка feature/companion-suite (в работе)
 Большой набор новых фич из бэклога (10 шт), идём по списку. Коммитить и пушить
@@ -41,8 +43,38 @@ Unisoc T606, альбомная ориентация). Проект собран
   `WebSocketDeskDataSource` (char append / backspace; enter/tab/стрелки пока
   не обрабатываются — вне MVP), `GitPanel.kt` — плашка-уведомление + диалог
   коммита показывает `readOnly`-поле, зеркалящее буфер, с кнопкой остановки.
+- **Телефонный экран**: `DeskScreen()` — точка входа-диспетчер, роутит по
+  `LocalConfiguration.smallestScreenWidthDp >= 600` (Material-порог планшета)
+  на `TabletDeskScreen` (прежний полный layout, без изменений) или
+  `PhoneDeskScreen.kt` (новый). Ориентация: `MainActivity` жёстко ставит
+  `SCREEN_ORIENTATION_LANDSCAPE` для планшета и `UNSPECIFIED` (свободный
+  поворот) для телефона; манифест больше не фиксирует `screenOrientation`.
+  Телефонный экран — урезанный набор данных: БЕЗ метрик CPU/GPU/RAM, БЕЗ
+  строки контекста (чипы приложений), БЕЗ звука/плейтайма. Остаётся: шапка
+  (часы/статус/настройки, без игрового режима и кнопки Git), макросы одним
+  плоским скроллящимся гридом без чипов-переключателей (`PhoneMacroPanel`
+  в `MacroPanel.kt` — активное приложение + системные вместе), Git —
+  урезанная `ui/components/PhoneGitPanel.kt` (БЕЗ Pull/Commit/Push/веток:
+  только кнопки сборки на прежнем месте + граф коммитов, свайп → PR/Issues
+  с GitHub, тап по строке открывает ссылку в браузере через `Intent`,
+  GitHub подтягивается автоматически при показе, не по свайпу как на
+  планшете), плеер — тот же `PlayerSheet`/`BottomPlayerPill`, что на
+  планшете, без изменений. Сцена «Тень билда» (`SceneOverlay`) общая с
+  планшетом, кнопки её запуска живут в `PhoneGitPanel`. Раскладка:
+  альбом — `Row` (макросы слева, Git+плеер справа, слот-паттерн как у
+  планшета), портрет — `Column` (макросы сверху, Git+плеер снизу);
+  переключение — `PhoneBody` внутри `PhoneDeskScreen.kt` читает
+  `LocalConfiguration.orientation`. `PagerDots` в `RightPanel.kt` сделан
+  публичным для переиспользования в `PhoneGitPanel`.
 
 ЗНАЮ ПРО НЕДОДЕЛКИ:
+- Телефонный экран: не проверен компилятором и НЕ ПРОВЕРЕН ВИЗУАЛЬНО (нет
+  Android-эмулятора/устройства в песочнице) — только код-ревью. При смене
+  ориентации `PhoneBody` переключается между `Row`/`Column`, структурно
+  разными поддеревьями — локальный `remember`-стейт внутри них (например,
+  текущая страница пейджера в `PhoneGitPanel`) на повороте сбрасывается,
+  это ожидаемо и не чинилось. Открытие ссылок PR/Issues не проверено на
+  реальном устройстве.
 - Remote typing: работает только с полем сообщения коммита (единственная цель
   из бэклога); курсор/выделение не поддерживаются — только дозапись символа и
   backspace с конца. `enter`/`tab`/стрелки/`home`/`end` шлются с ПК, но пока
@@ -168,7 +200,7 @@ githubRefresh). Метрики/медиа — push 1 с; контекст — 2 
 ## Карта файлов
 ```
 app/src/main/java/com/nofs/desk/
-  MainActivity.kt                 фуллскрин-иммерсив, альбомная
+  MainActivity.kt                 фуллскрин-иммерсив; ориентация по типу устройства (см. выше)
   DeskViewModel.kt                выбор источника (демо/WebSocket) + мёрж медиа с LocalMediaSource
   data/
     DeskState.kt                  модели: Metric, MediaState (+isLocalSource), Macro, AppContext, GitState (+GitHubPullRequest, GitHubIssue), DeskState, DeskCommand
@@ -183,13 +215,15 @@ app/src/main/java/com/nofs/desk/
     WebSocketDeskDataSource.kt    реальный источник: реконнект, кэш обложки
     Discovery.kt                  UDP-автопоиск (NOFS_DISCOVER/NOFS_HERE, порт 48485)
   ui/
-    DeskScreen.kt                 сборка экрана (колонки 1.7 : 1), SettingsDialog
+    DeskScreen.kt                 диспетчер планшет/телефон + TabletDeskScreen (колонки 1.7:1), SettingsDialog
+    PhoneDeskScreen.kt            телефонный экран: урезанные данные, портрет(Column)/альбом(Row)
     theme/Color.kt Type.kt Theme.kt
     components/
       HeaderAndMiniPlayer.kt      DeskHeader (часы, GameModeButton, чип статуса) + MiniPlayer
       MetricsGrid.kt              3 карточки (CPU/GPU/RAM)
       MetricSparks.kt             компактный режим метрик — спарклайны у часов
-      MacroPanel.kt               чипы приложений + сетка макросов
+      MacroPanel.kt               чипы приложений + сетка макросов; PhoneMacroPanel — плоский грид без чипов
+      PhoneGitPanel.kt            телефон: кнопки сборки + граф коммитов, свайп → GitHub PR/Issues со ссылками
       RightPanel.kt               табы Git/Звук/Время; MixerPanel — фейдеры каналов (пейджер)
       GitPanel.kt                 своп Local/GitHub, дропдаун веток, граф истории
       GitGraph.kt                 раскладка графа коммитов по дорожкам + Canvas
