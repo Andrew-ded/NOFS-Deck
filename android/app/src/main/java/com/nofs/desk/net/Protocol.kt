@@ -157,9 +157,6 @@ data class PlaytimeMsg(
 )
 
 @Serializable
-data class ClipboardMsg(val text: String = "", val kind: String = "text")
-
-@Serializable
 data class BuildOptionDto(val id: String, val label: String)
 
 @Serializable
@@ -193,6 +190,14 @@ data class DailyMsg(
     val todoCount: Int = -1,          // -1 = не посчитано
     val fixmeCount: Int = -1
 )
+
+/** Режим «клавиатура ПК → планшет» включён/выключен (хоткей на ПК). */
+@Serializable
+data class RemoteTypeStateMsg(val active: Boolean = false)
+
+/** Одна клавиша из режима remote-type. kind: "char" | "special". */
+@Serializable
+data class RemoteKeyMsg(val kind: String = "char", val value: String = "")
 
 // ---------- планшет -> агент ----------
 
@@ -239,6 +244,10 @@ object Cmd {
 
     fun cancelBuild(): JsonObject = buildJsonObject {
         put("type", "cmd"); put("cmd", "cancelBuild")
+    }
+
+    fun remoteTypeStop(): JsonObject = buildJsonObject {
+        put("type", "cmd"); put("cmd", "remoteTypeStop")
     }
 }
 

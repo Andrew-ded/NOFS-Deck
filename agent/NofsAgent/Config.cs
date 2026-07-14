@@ -13,6 +13,7 @@ public sealed class Config
     [JsonPropertyName("apps")] public List<AppConfig> Apps { get; set; } = new();
     [JsonPropertyName("macros")] public List<MacroConfig> Macros { get; set; } = new();
     [JsonPropertyName("builds")] public List<BuildConfig> Builds { get; set; } = new();
+    [JsonPropertyName("remoteType")] public RemoteTypeConfig RemoteType { get; set; } = new();
 
     public static string FilePath =>
         Path.Combine(AppContext.BaseDirectory, "config.json");
@@ -89,6 +90,15 @@ public sealed class BuildConfig
     [JsonPropertyName("args")] public string Args { get; set; } = "";
     /// <summary>Рабочая папка; пусто — repoPath.</summary>
     [JsonPropertyName("cwd")] public string Cwd { get; set; } = "";
+}
+
+public sealed class RemoteTypeConfig
+{
+    /// <summary>
+    /// Клавиша-тоггл режима «клавиатура ПК → планшет»: scrolllock (по умолчанию,
+    /// физически почти не используется) | pause | f13 | f14 | f15.
+    /// </summary>
+    [JsonPropertyName("hotkey")] public string Hotkey { get; set; } = "scrolllock";
 }
 
 public sealed class MacroConfig

@@ -106,12 +106,6 @@ public sealed record PlaytimeMsg(
     public string Type => "playtime";
 }
 
-/// <summary>Новый текст/ссылка из буфера ПК — планшет покажет QR.</summary>
-public sealed record ClipboardMsg(string Text, string Kind)
-{
-    public string Type => "clipboard";
-}
-
 /// <summary>Live-статус сборки/тестов — полноэкранная сцена.</summary>
 public sealed record SceneMsg(
     string Phase, string Source, string Task,
@@ -134,6 +128,18 @@ public sealed record DailyMsg(
     int TodoCount, int FixmeCount)
 {
     public string Type => "daily";
+}
+
+/// <summary>Режим «клавиатура ПК → планшет» включён/выключен (хоткей на ПК).</summary>
+public sealed record RemoteTypeStateMsg(bool Active)
+{
+    public string Type => "remoteTypeState";
+}
+
+/// <summary>Одна клавиша из режима remote-type. Kind: "char" | "special".</summary>
+public sealed record RemoteKeyMsg(string Kind, string Value)
+{
+    public string Type => "remoteKey";
 }
 
 // ---------- планшет -> агент ----------

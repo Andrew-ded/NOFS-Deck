@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Commit
+import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -83,6 +84,9 @@ fun GitPanel(
     onGitHubRefresh: () -> Unit,
     builds: List<com.nofs.desk.data.BuildOption> = emptyList(),
     onRunBuild: (String) -> Unit = {},
+    remoteTypeActive: Boolean = false,
+    remoteTypeBuffer: String = "",
+    onRemoteTypeStop: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -142,6 +146,15 @@ fun GitPanel(
         }
 
         Spacer(Modifier.height(12.dp))
+
+        // Хоткей на ПК включил ввод физической клавиатуры — покажем, куда он льётся
+        if (remoteTypeActive) {
+            RemoteTypeBanner(
+                onClick = { showCommitDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+        }
 
         if (git.busy || git.githubLoading) {
             LinearProgressIndicator(
@@ -206,11 +219,43 @@ fun GitPanel(
         CommitDialog(
             dirtyFiles = git.dirtyFiles,
             changes = git.changes,
+            remoteTypeActive = remoteTypeActive,
+            remoteTypeBuffer = remoteTypeBuffer,
+            onRemoteTypeStop = onRemoteTypeStop,
             onDismiss = { showCommitDialog = false },
             onConfirm = { msg ->
                 showCommitDialog = false
                 onCommit(msg)
             }
+        )
+    }
+}
+
+/** Плашка «ПК печатает» — тап открывает диалог коммита, куда льётся текст. */
+@Composable
+private fun RemoteTypeBanner(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Lavender.bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Keyboard,
+            contentDescription = null,
+            tint = DeskText,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = "Клавиатура ПК активна — печатает в сообщение коммита",
+            style = MaterialTheme.typography.labelSmall,
+            color = DeskText,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -609,10 +654,18 @@ private fun EmptyLine(text: String) {
 private fun CommitDialog(
     dirtyFiles: Int,
     changes: List<String>,
+    remoteTypeActive: Boolean = false,
+    remoteTypeBuffer: String = "",
+    onRemoteTypeStop: () -> Unit = {},
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var message by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf(remoteTypeBuffer) }
+    // Пока активен режим ПК-клавиатуры, поле зеркалит буфер с агента —
+    // локальный ввод (touch-клавиатура) в это время отключён (readOnly ниже).
+    LaunchedEffect(remoteTypeBuffer, remoteTypeActive) {
+        if (remoteTypeActive) message = remoteTypeBuffer
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DeskCard,
@@ -667,8 +720,22 @@ private fun CommitDialog(
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it },
-                    placeholder = { Text("Сообщение коммита") },
+                    placeholder = {
+                        Text(if (remoteTypeActive) "Печатает ПК…" else "Сообщение коммита")
+                    },
                     singleLine = true,
+                    readOnly = remoteTypeActive,
+                    trailingIcon = if (remoteTypeActive) {
+                        {
+                            IconButton(onClick = onRemoteTypeStop, modifier = Modifier.size(28.dp)) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Keyboard,
+                                    contentDescription = "Остановить ввод с ПК",
+                                    tint = Lavender.bar
+                                )
+                            }
+                        }
+                    } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
