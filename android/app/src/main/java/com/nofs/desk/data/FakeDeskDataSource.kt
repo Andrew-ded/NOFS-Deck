@@ -67,7 +67,36 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
         jobs += scope.launch { clockLoop() }
         jobs += scope.launch { metricsLoop() }
         jobs += scope.launch { mediaLoop() }
+        jobs += scope.launch { filePassportLoop() }
         _state.update { it.copy(daily = demoDaily) }
+    }
+
+    /** Демо «паспорта файла»: имитируем смену активного файла в IDE. */
+    private suspend fun filePassportLoop() {
+        val demo = listOf(
+            FilePassportState(
+                fileName = "GitService.cs",
+                relativePath = "agent/NofsAgent/Services/GitService.cs",
+                declares = listOf("class GitService", "SnapshotAsync()", "PushAsync()", "CheckoutAsync()"),
+                dependencies = listOf("System.Diagnostics", "System.Text"),
+                usedIn = listOf("AgentHost.cs")
+            ),
+            FilePassportState(
+                fileName = "MixerPanel.kt",
+                relativePath = "android/app/.../ui/components/RightPanel.kt",
+                declares = listOf("MixerPanel()", "VolumeRow()", "MicButton()"),
+                dependencies = listOf("androidx.compose.material3", "data.AudioState"),
+                usedIn = listOf("RightPanel.kt", "DeskScreen.kt")
+            )
+        )
+        var i = 0
+        delay(2_000)
+        while (true) {
+            val p = demo[i % demo.size].copy(at = System.currentTimeMillis())
+            _state.update { it.copy(filePassport = p) }
+            i++
+            delay(18_000) // карточка живёт 12с, потом пауза — видно появление/угасание
+        }
     }
 
     /** Демо-сборка: прогон сцены idle→running→success→idle. Запускается кнопкой. */
@@ -220,7 +249,11 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
                 val d = it.media.durationSec
                 it.copy(media = it.media.copy(positionSec = (d * command.fraction).roundToInt()))
             }
-            is DeskCommand.RunMacro -> { /* демо: ничего */ }
+            is DeskCommand.RunMacro -> {
+                // Демо: кнопка запуска (икона build/play/debug) прогоняет сцену
+                val icon = _state.value.macros.firstOrNull { it.id == command.id }?.icon?.lowercase()
+                if (icon in setOf("build", "hammer", "play", "run", "debug", "tests", "test", "check")) runDemoBuild()
+            }
             is DeskCommand.FocusApp -> _state.update { st ->
                 st.copy(apps = st.apps.map { a -> a.copy(isActive = a.id == command.id) })
             }
@@ -305,11 +338,11 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             Macro("mute", "Тишина", "mute", AccentTone.PEACH),
             Macro("lock", "Блокировка", "lock", AccentTone.ROSE),
             Macro("sleep", "Сон ПК", "sleep", AccentTone.LAVENDER),
-            // Android Studio (активное демо-приложение)
-            Macro("studio.build", "Собрать", "build", AccentTone.SAGE, "studio"),
-            Macro("studio.run", "Запуск", "play", AccentTone.SKY, "studio"),
-            Macro("studio.sync", "Gradle Sync", "sync", AccentTone.PEACH, "studio"),
-            Macro("studio.logcat", "Logcat", "terminal", AccentTone.SAND, "studio"),
+            // Android Studio (активное демо-приложение): кнопки запуска — сцена
+            Macro("m.studio.build", "Сборка", "build", AccentTone.SAGE, "studio"),
+            Macro("m.studio.run", "Запуск", "play", AccentTone.SKY, "studio"),
+            Macro("m.studio.debug", "Дебаг", "debug", AccentTone.PEACH, "studio"),
+            Macro("m.studio.tests", "Тесты", "tests", AccentTone.SAND, "studio"),
             // Chrome
             Macro("chrome.tab", "Новая вкладка", "tab", AccentTone.SKY, "chrome"),
             Macro("chrome.inc", "Инкогнито", "incognito", AccentTone.LAVENDER, "chrome"),

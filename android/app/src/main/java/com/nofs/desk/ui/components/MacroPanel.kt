@@ -40,10 +40,60 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import com.nofs.desk.data.AppContext
 import com.nofs.desk.data.Macro
+import com.nofs.desk.ui.theme.DeskText
 import com.nofs.desk.ui.theme.LocalDeskPalette
+import com.nofs.desk.ui.theme.Sage
 import com.nofs.desk.ui.theme.pastel
+
+/** Кнопки запуска (run/build/debug) — по иконке макроса; иначе обычная плитка. */
+private fun isLaunchMacro(icon: String): Boolean = when (icon.lowercase()) {
+    "build", "hammer", "play", "run", "debug", "tests", "test", "check" -> true
+    else -> false
+}
+
+/** Зелёная пилюля запуска (как кнопка сборки в git-панели): иконка по типу + подпись. */
+@Composable
+private fun LaunchPill(macro: Macro, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Sage.bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = macroIcon(macro.icon),  // build→молоток, play→стрелка, debug→жук
+            contentDescription = null,
+            tint = DeskText,
+            modifier = Modifier.size(15.dp)
+        )
+        Text(
+            text = macro.label,
+            style = MaterialTheme.typography.labelMedium,
+            color = DeskText,
+            maxLines = 1
+        )
+    }
+}
+
+/** Ряд пилюль запуска (переносится по строкам). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LaunchPills(macros: List<Macro>, onMacroClick: (String) -> Unit) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        macros.forEach { m -> LaunchPill(m) { onMacroClick(m.id) } }
+    }
+}
 
 /**
  * Контекстные макросы.
@@ -123,15 +173,24 @@ fun MacroPanel(
         ) { key ->
             val shown = if (key == "system") systemMacros
             else macros.filter { it.app == key }
-            LazyVerticalGrid(
-                columns = GridCells.FixedSize(size = 92.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                userScrollEnabled = false,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(shown, key = { it.id }) { macro ->
-                    MacroCard(macro) { onMacroClick(macro.id) }
+            val launch = shown.filter { isLaunchMacro(it.icon) }
+            val rest = shown.filter { !isLaunchMacro(it.icon) }
+            Column(Modifier.fillMaxSize()) {
+                // Кнопки запуска — зелёные пилюли сверху (как в git-панели)
+                if (launch.isNotEmpty()) {
+                    LaunchPills(launch, onMacroClick)
+                    Spacer(Modifier.height(10.dp))
+                }
+                LazyVerticalGrid(
+                    columns = GridCells.FixedSize(size = 92.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    userScrollEnabled = false,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(rest, key = { it.id }) { macro ->
+                        MacroCard(macro) { onMacroClick(macro.id) }
+                    }
                 }
             }
         }
@@ -156,15 +215,23 @@ fun PhoneMacroPanel(
     val appMacros = activeApp?.let { a -> macros.filter { it.app == a.id } }.orEmpty()
     val systemMacros = macros.filter { it.app.isBlank() || it.app == "system" }
     val shown = appMacros + systemMacros
+    val launch = shown.filter { isLaunchMacro(it.icon) }
+    val rest = shown.filter { !isLaunchMacro(it.icon) }
 
-    LazyVerticalGrid(
-        columns = GridCells.FixedSize(size = 92.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier.fillMaxSize()
-    ) {
-        items(shown, key = { it.id }) { macro ->
-            MacroCard(macro) { onMacroClick(macro.id) }
+    Column(modifier.fillMaxSize()) {
+        if (launch.isNotEmpty()) {
+            LaunchPills(launch, onMacroClick)
+            Spacer(Modifier.height(10.dp))
+        }
+        LazyVerticalGrid(
+            columns = GridCells.FixedSize(size = 92.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            items(rest, key = { it.id }) { macro ->
+                MacroCard(macro) { onMacroClick(macro.id) }
+            }
         }
     }
 }

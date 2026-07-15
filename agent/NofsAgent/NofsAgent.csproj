@@ -19,6 +19,10 @@
   <ItemGroup>
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.3" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <!-- Анализаторы «Паспорта файла»: Roslyn (C#) + tree-sitter (C# и др., Kotlin
+         требует отдельного нативного tree-sitter-kotlin.dll). См. FilePassportService. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+    <PackageReference Include="TreeSitter.DotNet" Version="1.3.0" />
   </ItemGroup>
 
   <ItemGroup>

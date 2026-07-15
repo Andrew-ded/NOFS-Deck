@@ -45,7 +45,8 @@ public sealed class AgentHost : IDisposable
         _build = new BuildService(config.Builds, config.RepoPath);
         _daily = new DailyService(config.RepoPath);
         _remoteType = new RemoteTypeService(config.RemoteType.Hotkey);
-        _filePassport = new FilePassportService(() => _config.RepoPath);
+        _filePassport = new FilePassportService(
+            () => _config.RepoPath, config.PassportAnalyzer, config.PassportRoots);
 
         _server = new WsServer(config.Port);
         _server.CommandReceived += cmd => _ = HandleCommandAsync(cmd);
@@ -72,6 +73,7 @@ public sealed class AgentHost : IDisposable
             _daily.RecordBuild(sec);
             _ = _server.BroadcastAsync(_daily.Snapshot());
         };
+        _macros.BuildRequested += id => _build.Run(id);   // макрос build:<id> → сцена
         _discovery = new DiscoveryResponder(config.DiscoveryPort, config.Port);
     }
 
@@ -85,7 +87,8 @@ public sealed class AgentHost : IDisposable
         _server.Start();
         _remoteType.Start();                      // клавиатура ПК -> планшет
         _ = LoopAsync(1000, PushFastAsync);      // метрики + медиа
-        _ = LoopAsync(2000, PushContextAsync);   // активное окно + аудио
+        _ = LoopAsync(500, PushContextAsync);    // активное окно (частый опрос — низкая задержка)
+        _ = LoopAsync(600, PushAudioAsync);      // звук/микшер (отдельно от контекста)
         _ = PlaytimeLoopAsync();                 // учёт времени (тикает и без клиентов)
         _ = ExternalBuildLoopAsync();            // грубая детекция сборок из IDE
         _ = DailyLoopAsync();                    // сводка дня раз в 5 мин
@@ -118,9 +121,13 @@ public sealed class AgentHost : IDisposable
     private async Task PushContextAsync()
     {
         await _server.BroadcastAsync(_context.Read());
-        await _server.BroadcastAsync(_audio.Read());
         var passport = _filePassport.Tick();
         if (passport != null) await _server.BroadcastAsync(passport);
+    }
+
+    private async Task PushAudioAsync()
+    {
+        await _server.BroadcastAsync(_audio.Read());
     }
 
     /// <summary>Плейтайм тикает всегда (даже без планшета), пуш — раз в 30 с.</summary>

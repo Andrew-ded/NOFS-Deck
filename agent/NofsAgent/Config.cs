@@ -13,6 +13,11 @@ public sealed class Config
     [JsonPropertyName("apps")] public List<AppConfig> Apps { get; set; } = new();
     [JsonPropertyName("macros")] public List<MacroConfig> Macros { get; set; } = new();
     [JsonPropertyName("builds")] public List<BuildConfig> Builds { get; set; } = new();
+    /// <summary>Анализатор паспорта файла: "auto" | "roslyn" | "treesitter" | "grep".
+    /// auto = Roslyn для C#, grep для остального.</summary>
+    [JsonPropertyName("passportAnalyzer")] public string PassportAnalyzer { get; set; } = "auto";
+    /// <summary>Доп. корни для поиска активного файла (кроме git-папки и авто-проектов IDE).</summary>
+    [JsonPropertyName("passportRoots")] public List<string> PassportRoots { get; set; } = new();
     [JsonPropertyName("remoteType")] public RemoteTypeConfig RemoteType { get; set; } = new();
 
     public static string FilePath =>
@@ -88,8 +93,10 @@ public sealed class BuildConfig
     /// <summary>Программа: gradlew.bat / dotnet / cmd.</summary>
     [JsonPropertyName("cmd")] public string Cmd { get; set; } = "";
     [JsonPropertyName("args")] public string Args { get; set; } = "";
-    /// <summary>Рабочая папка; пусто — repoPath.</summary>
+    /// <summary>Рабочая папка (запасной вариант, если ide не задан/не найден).</summary>
     [JsonPropertyName("cwd")] public string Cwd { get; set; } = "";
+    /// <summary>"studio" | "rider" — брать путь из текущего открытого проекта IDE.</summary>
+    [JsonPropertyName("ide")] public string Ide { get; set; } = "";
 }
 
 public sealed class RemoteTypeConfig

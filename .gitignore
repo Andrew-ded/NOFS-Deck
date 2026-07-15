@@ -90,3 +90,7 @@ agent/NofsAgent/config.json
 
 # Локальный конфиг агента (содержит токен) — не коммитить
 agent/NofsAgent/config.json
+
+# Клонированная грамматика для сборки tree-sitter-kotlin.dll — не в репозиторий
+agent/NofsAgent/tree-sitter-kotlin/
+agent/NofsAgent/**/tree-sitter-kotlin.dll

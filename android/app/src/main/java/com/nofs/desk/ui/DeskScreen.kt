@@ -58,7 +58,6 @@ import com.nofs.desk.data.ScenePhase
 import com.nofs.desk.data.SceneState
 import com.nofs.desk.ui.components.BottomPlayerPill
 import com.nofs.desk.ui.components.DeskHeader
-import com.nofs.desk.ui.components.FilePassportCard
 import com.nofs.desk.ui.components.MacroPanel
 import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
@@ -282,14 +281,14 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
                             git = state.git,
                             audio = state.audio,
                             playtime = state.playtime,
+                            filePassport = state.filePassport,
                             onGitRefresh = { viewModel.send(DeskCommand.GitRefresh) },
                             onGitPull = { viewModel.send(DeskCommand.GitPull) },
                             onGitCommit = { viewModel.send(DeskCommand.GitCommit(it)) },
                             onGitPush = { viewModel.send(DeskCommand.GitPush) },
                             onGitCheckout = { viewModel.send(DeskCommand.GitCheckout(it)) },
                             onGitHubRefresh = { viewModel.send(DeskCommand.GitHubRefresh) },
-                            builds = state.builds,
-                            onRunBuild = { viewModel.send(DeskCommand.RunBuild(it)) },
+                            // Сборка вынесена в макросы (build:<id>), строка в git-панели больше не нужна
                             remoteTypeActive = state.remoteTypeActive,
                             remoteTypeBuffer = state.remoteTypeBuffer,
                             onRemoteTypeStop = { viewModel.send(DeskCommand.RemoteTypeStop) },
@@ -337,15 +336,7 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
             )
         }
 
-        // «Паспорт файла» (ф.9) — снизу слева, вне игрового режима (там не про код)
-        if (!gameMode) {
-            FilePassportCard(
-                state = state.filePassport,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 4.dp, bottom = 10.dp)
-            )
-        }
+        // «Паспорт файла» переехал в страницу правого слота (RightPage.FILE)
 
         // Ошибки от агента
         SnackbarHost(

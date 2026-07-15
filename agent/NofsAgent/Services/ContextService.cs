@@ -30,11 +30,25 @@ public sealed class ContextService(List<AppConfig> apps)
     public ContextMsg Read()
     {
         var foreground = ForegroundProcessName();
+
+        // Один снимок всех процессов вместо GetProcessesByName на КАЖДОЕ
+        // приложение — так дешевле, можно опрашивать чаще (низкая задержка).
+        var running = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var p in Process.GetProcesses())
+            {
+                running.Add(p.ProcessName);
+                p.Dispose();
+            }
+        }
+        catch { /* редкий сбой перечисления — вернём что есть */ }
+
         var chips = new List<AppChipDto>();
         foreach (var a in apps)
         {
             if (string.IsNullOrEmpty(a.Process)) continue;
-            if (!IsRunning(a.Process)) continue;
+            if (!running.Contains(a.Process)) continue;
             chips.Add(new AppChipDto(
                 Id: a.Id,
                 Label: a.Label,
@@ -42,14 +56,6 @@ public sealed class ContextService(List<AppConfig> apps)
                 IsActive: foreground.Equals(a.Process, StringComparison.OrdinalIgnoreCase)));
         }
         return new ContextMsg(chips);
-    }
-
-    private static bool IsRunning(string processName)
-    {
-        var procs = Process.GetProcessesByName(processName);
-        var running = procs.Length > 0;
-        foreach (var p in procs) p.Dispose();
-        return running;
     }
 
     private static string ForegroundProcessName()

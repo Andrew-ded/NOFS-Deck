@@ -5,10 +5,14 @@ namespace NofsAgent.Services;
 
 /// <summary>
 /// Выполнение макросов из config.json.
-/// Действия: run:программа|аргументы, keys:комбинация, lock, sleep, mute.
+/// Действия: run:программа|аргументы, keys:комбинация, lock, sleep, mute,
+/// build:&lt;id&gt; (запуск сборки из builds[] со сценой «Тень билда»).
 /// </summary>
 public sealed class MacroService(List<MacroConfig> macros)
 {
+    /// <summary>Макрос запросил сборку build:&lt;id&gt; — обрабатывает AgentHost через BuildService.</summary>
+    public event Action<string>? BuildRequested;
+
     public List<MacroDto> ToDtos() => macros.Select(m =>
         new MacroDto(m.Id, m.Label, m.Icon, m.Accent, m.App)).ToList();
 
@@ -29,6 +33,8 @@ public sealed class MacroService(List<MacroConfig> macros)
                 RunProgram(action[4..]);
             else if (action.StartsWith("keys:"))
                 SendKeys(action[5..]);
+            else if (action.StartsWith("build:"))
+                BuildRequested?.Invoke(action[6..]);   // сборка со сценой — в AgentHost
             else switch (action)
             {
                 case "lock": LockWorkStation(); break;

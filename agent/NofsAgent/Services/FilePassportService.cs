@@ -13,42 +13,50 @@ namespace NofsAgent.Services;
 /// что файл объявляет (типы/методы), от чего зависит (using/import),
 /// где встречается в остальном репозитории.
 /// </summary>
-public sealed class FilePassportService(Func<string> repoPath)
+public sealed partial class FilePassportService(
+    Func<string> repoPath, string analyzerMode = "auto", List<string>? extraRoots = null)
 {
+    private readonly List<IPassportAnalyzer> _analyzers = PassportAnalyzerFactory.Build(analyzerMode);
+    private readonly List<string> _extraRoots = extraRoots ?? new();
+
+    // Кэш авто-обнаруженных корней проектов IDE (recentProjects.xml) — раз в 30с.
+    private List<string> _ideRootsCache = new();
+    private DateTime _ideRootsAt = DateTime.MinValue;
+
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
 
-    // Большинство IDE (Rider/Studio/VS/VS Code) кладут имя файла первым
-    // токеном заголовка окна: "GitService.cs — NofsAgent — Rider".
+    // Имя файла ищем В ЛЮБОМ месте заголовка: Rider кладёт его первым
+    // ("GitService.cs — NofsAgent — Rider"), а Android Studio часто первым
+    // ставит имя проекта ("MyApp – MainActivity.kt [MyApp.app]"). Берём
+    // первый токен, похожий на исходник.
     private static readonly Regex TitleFile = new(
-        @"^([\w.\-]+\.(?:cs|kt|kts|java|ts|tsx|js|jsx|py|go|rs|cpp|cc|c|h|hpp|xml|json|gradle))\b",
+        @"\b([\w\-]+\.(?:cs|kt|kts|java|ts|tsx|js|jsx|py|go|rs|cpp|cc|c|h|hpp|xml|json|gradle))\b",
         RegexOptions.Compiled);
 
     private static readonly string[] SkipDirs =
         { "bin", "obj", ".git", ".idea", ".gradle", "build", "node_modules", ".vs" };
 
-    private static readonly Regex TypeDecl = new(
-        @"\b(?:class|interface|struct|enum|object)\s+(\w+)", RegexOptions.Compiled);
-    private static readonly Regex MethodDeclCs = new(
-        @"^\s*(?:public|private|protected|internal|static|async|override|virtual|\s)+[\w<>\[\],. ?]+\s+(\w+)\s*\([^;{)]*\)\s*(?:=>|\{|;)",
-        RegexOptions.Compiled | RegexOptions.Multiline);
-    private static readonly Regex MethodDeclKt = new(
-        @"\bfun\s+(\w+)\s*\(", RegexOptions.Compiled);
-    private static readonly Regex UsingCs = new(
-        @"^\s*using\s+([\w.]+)\s*;", RegexOptions.Compiled | RegexOptions.Multiline);
-    private static readonly Regex ImportOther = new(
-        @"^\s*import\s+([\w.*]+)", RegexOptions.Compiled | RegexOptions.Multiline);
-
+    // объявления/зависимости считают анализаторы (grep/Roslyn/tree-sitter),
+    // здесь остаётся только поиск использований типа грепом по репозиторию
     private static readonly string[] UsageExtensions = { "*.cs", "*.kt", "*.java", "*.ts", "*.tsx" };
 
     private string _lastFile = "";
+    private string _lastTitle = "";
 
     /// <summary>null — ничего не изменилось, слать нечего.</summary>
     public FilePassportMsg? Tick()
     {
         var title = ForegroundTitle();
+        // Диагностика: логируем сырой заголовок активного окна при смене —
+        // видно, содержит ли IDE имя файла (см. issue #19).
+        if (title != _lastTitle)
+        {
+            _lastTitle = title;
+            Log.Info($"foreground title: '{title}'");
+        }
         var match = TitleFile.Match(title);
         if (!match.Success)
         {
@@ -61,12 +69,82 @@ public sealed class FilePassportService(Func<string> repoPath)
         if (fileName == _lastFile) return null; // тот же файл — не гоняем анализ на каждый тик
         _lastFile = fileName;
 
-        var root = repoPath();
-        if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) return null;
+        var roots = SearchRoots();
+        if (roots.Count == 0) return null;
 
-        try { return Analyze(root, fileName); }
+        try { return Analyze(roots, fileName); }
         catch (Exception ex) { Log.Warn($"file passport: {ex.Message}"); return null; }
     }
+
+    /// <summary>
+    /// Где искать активный файл: явные passportRoots из конфига + git-папка +
+    /// авто-обнаруженные корни открытых/недавних проектов Rider и Android Studio.
+    /// Так файл находится, даже если он из другого проекта, чем git-репо.
+    /// </summary>
+    private List<string> SearchRoots()
+    {
+        var roots = new List<string>(_extraRoots);
+        var repo = repoPath();
+        if (!string.IsNullOrWhiteSpace(repo)) roots.Add(repo);
+        roots.AddRange(DiscoverIdeRoots());
+        return roots
+            .Where(r => !string.IsNullOrWhiteSpace(r) && Directory.Exists(r))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Корни недавних проектов из recentProjects.xml IDE (JetBrains + Google).
+    /// Кэш 30с, чтобы не читать файлы на каждый тик.
+    /// </summary>
+    private List<string> DiscoverIdeRoots()
+    {
+        if ((DateTime.Now - _ideRootsAt).TotalSeconds < 30) return _ideRootsCache;
+        _ideRootsAt = DateTime.Now;
+
+        var found = new List<string>();
+        try
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var bases = new[] { Path.Combine(appData, "JetBrains"), Path.Combine(appData, "Google") };
+
+            foreach (var baseDir in bases)
+            {
+                if (!Directory.Exists(baseDir)) continue;
+                foreach (var ideDir in Directory.GetDirectories(baseDir))
+                {
+                    foreach (var name in new[] { "recentProjects.xml", "recentSolutions.xml" })
+                    {
+                        var xml = Path.Combine(ideDir, "options", name);
+                        if (!File.Exists(xml)) continue;
+                        try
+                        {
+                            var text = File.ReadAllText(xml);
+                            foreach (Match m in RecentPath().Matches(text))
+                            {
+                                var p = m.Groups[1].Value
+                                    .Replace("$USER_HOME$", home)
+                                    .Replace('/', Path.DirectorySeparatorChar);
+                                // .sln -> папка решения; иначе это уже папка проекта
+                                if (p.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
+                                    p = Path.GetDirectoryName(p) ?? p;
+                                if (Directory.Exists(p)) found.Add(p);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+        }
+        catch (Exception ex) { Log.Warn($"ide roots: {ex.Message}"); }
+
+        _ideRootsCache = found.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return _ideRootsCache;
+    }
+
+    [GeneratedRegex("(?:key|value)=\"([^\"]*[/\\\\][^\"]+)\"")]
+    private static partial Regex RecentPath();
 
     private static string ForegroundTitle()
     {
@@ -77,28 +155,32 @@ public sealed class FilePassportService(Func<string> repoPath)
         return sb.ToString();
     }
 
-    private static FilePassportMsg? Analyze(string root, string fileName)
+    private FilePassportMsg? Analyze(List<string> roots, string fileName)
     {
-        var found = FindFile(root, fileName);
-        if (found == null) return null;
+        // Ищем файл по всем корням; берём первый найденный и его корень.
+        string? found = null, root = null;
+        foreach (var r in roots)
+        {
+            found = FindFile(r, fileName);
+            if (found != null) { root = r; break; }
+        }
+        if (found == null || root == null) return null;
 
         var text = File.ReadAllText(found);
         var relPath = Path.GetRelativePath(root, found).Replace('\\', '/');
+        var ext = Path.GetExtension(found);
 
-        var types = TypeDecl.Matches(text).Select(m => m.Groups[1].Value).Distinct().Take(6).ToList();
-        var primaryType = types.FirstOrDefault();
-        var methods = MethodDeclCs.Matches(text).Select(m => m.Groups[1].Value)
-            .Concat(MethodDeclKt.Matches(text).Select(m => m.Groups[1].Value))
-            .Where(n => n != primaryType) // не путать конструктор с именем типа
-            .Distinct().Take(10).ToList();
-        var declares = types.Select(t => $"class {t}")
-            .Concat(methods.Select(m => $"{m}()"))
-            .Take(12).ToList();
+        // Выбранная цепочка анализаторов: первый, кто поддержал ext и вернул не-null.
+        List<string> declares = new(), deps = new();
+        foreach (var a in _analyzers)
+        {
+            if (!a.Supports(ext)) continue;
+            var r = a.Analyze(ext, text);
+            if (r != null) { declares = r.Value.declares; deps = r.Value.deps; break; }
+        }
 
-        var deps = UsingCs.Matches(text).Select(m => m.Groups[1].Value)
-            .Concat(ImportOther.Matches(text).Select(m => m.Groups[1].Value))
-            .Distinct().Take(10).ToList();
-
+        // primary-тип — первый "class X" из declares, для поиска использований
+        var primaryType = declares.FirstOrDefault(d => d.StartsWith("class "))?.Substring(6);
         var usedIn = primaryType == null ? new List<string>() : FindUsages(root, found, primaryType);
 
         return new FilePassportMsg(fileName, relPath, declares, deps, usedIn);

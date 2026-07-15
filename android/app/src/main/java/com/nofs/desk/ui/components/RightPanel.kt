@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MicOff
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
@@ -42,6 +43,7 @@ import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,13 +83,14 @@ import java.util.Locale
  * Правый слот: три страницы — Git / Звук (микшер) / Время (плейтайм).
  * Шапка: иконки-переключатели + кнопка «спрятать» (весь слот).
  */
-enum class RightPage { GIT, MIXER, TIME }
+enum class RightPage { GIT, MIXER, TIME, FILE }
 
 @Composable
 fun RightPanel(
     git: GitState,
     audio: AudioState,
     playtime: PlaytimeState,
+    filePassport: com.nofs.desk.data.FilePassportState = com.nofs.desk.data.FilePassportState(),
     onGitRefresh: () -> Unit,
     onGitPull: () -> Unit,
     onGitCommit: (String) -> Unit,
@@ -110,33 +113,6 @@ fun RightPanel(
     var page by rememberSaveable { mutableStateOf(RightPage.GIT) }
 
     Column(modifier) {
-        // Шапка слота: переключатели страниц + спрятать
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            PageTab(Icons.Rounded.AccountTree, "Git", page == RightPage.GIT) {
-                page = RightPage.GIT
-            }
-            PageTab(Icons.Rounded.VolumeUp, "Звук", page == RightPage.MIXER) {
-                page = RightPage.MIXER
-            }
-            PageTab(Icons.Rounded.Schedule, "Время", page == RightPage.TIME) {
-                page = RightPage.TIME
-            }
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onHide, modifier = Modifier.size(30.dp)) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardDoubleArrowRight,
-                    contentDescription = "Спрятать панель",
-                    tint = DeskMuted,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
         AnimatedContent(
             targetState = page,
             transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
@@ -171,6 +147,40 @@ fun RightPanel(
                 RightPage.TIME -> PlaytimePanel(
                     playtime = playtime,
                     modifier = Modifier.fillMaxSize()
+                )
+                RightPage.FILE -> FilePassportPanel(
+                    state = filePassport,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Переключатели страниц + спрятать — ВНИЗУ, к ним проще тянуться
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            PageTab(Icons.Rounded.AccountTree, "Git", page == RightPage.GIT) {
+                page = RightPage.GIT
+            }
+            PageTab(Icons.Rounded.VolumeUp, "Звук", page == RightPage.MIXER) {
+                page = RightPage.MIXER
+            }
+            PageTab(Icons.Rounded.Schedule, "Время", page == RightPage.TIME) {
+                page = RightPage.TIME
+            }
+            PageTab(Icons.Rounded.Description, "Файл", page == RightPage.FILE) {
+                page = RightPage.FILE
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onHide, modifier = Modifier.size(30.dp)) {
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardDoubleArrowRight,
+                    contentDescription = "Спрятать панель",
+                    tint = DeskMuted,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -359,9 +369,15 @@ private fun ChannelFader(
 ) {
     val palette = LocalDeskPalette.current
     val pastel = channel.accent.pastel()
-    var dragging by remember { mutableStateOf(false) }
-    var dragValue by remember { mutableFloatStateOf(0f) }
-    val shown = if (dragging) dragValue else channel.volume.coerceIn(0f, 1f)
+    // Локальное значение — источник истины: ставим сразу, ползунок не прыгает
+    // на серверный эхо-ответ. Серверное значение двигает ползунок ТОЛЬКО если
+    // это реальная коррекция (изменили громкость на ПК/другим источником).
+    // Ключ по каналу — при смене приложения на этой позиции берём его громкость.
+    var local by remember(channel.label) { mutableFloatStateOf(channel.volume) }
+    LaunchedEffect(channel.volume) {
+        if (kotlin.math.abs(channel.volume - local) > 0.03f) local = channel.volume
+    }
+    val shown = local.coerceIn(0f, 1f)
 
     Column(
         modifier = Modifier
@@ -400,13 +416,11 @@ private fun ChannelFader(
             VerticalSlider(
                 value = shown,
                 onValueChange = {
-                    dragging = true
-                    dragValue = it
+                    local = it
                     onVolume(it)
                 },
                 onValueChangeFinished = {
-                    dragging = false
-                    onVolume(dragValue)
+                    onVolume(local)
                 },
                 steps = 9,
                 colors = SliderDefaults.colors(

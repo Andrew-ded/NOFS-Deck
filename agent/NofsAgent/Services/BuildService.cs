@@ -56,15 +56,25 @@ public sealed partial class BuildService(List<BuildConfig> builds, string repoPa
             phase, source, task, taskNum, total,
             (int)sw.Elapsed.TotalSeconds, passed, failed, log.ToList()));
 
-        var cwd = cfg.Cwd.Length > 0 ? cfg.Cwd : repoPath;
+        // Путь проекта: сперва из ТЕКУЩЕГО открытого проекта IDE (если задан ide),
+        // иначе — из config builds[].cwd. Так сборка следует за тем, что открыто в Rider/Studio.
+        var cwd = cfg.Cwd;
+        if (!string.IsNullOrWhiteSpace(cfg.Ide))
+        {
+            var idePath = IdeProjects.CurrentProject(cfg.Ide);
+            if (!string.IsNullOrWhiteSpace(idePath))
+            {
+                cwd = idePath;
+                Log.Info($"build cwd from {cfg.Ide}: {cwd}");
+            }
+        }
 
         try
         {
             if (string.IsNullOrWhiteSpace(cwd) || !Directory.Exists(cwd))
             {
                 Updated?.Invoke(new Snapshot("failed", source,
-                    "не задана рабочая папка сборки — укажите cwd в config.json " +
-                    "или выберите папку проекта через «Отправить на планшет»",
+                    $"не найден проект: cwd='{cwd}'. Открой проект в {cfg.Ide} или укажи builds[].cwd",
                     0, total, 0, 0, 0, new()));
                 Finished?.Invoke(false, 0);
                 return;
