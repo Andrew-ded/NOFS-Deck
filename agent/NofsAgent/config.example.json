@@ -1,14 +1,6 @@
 {
   "port": 48484,
   "discoveryPort": 48485,
-  "repoPath": "C:\\dev\\MyRepo",
-  "remoteType": {
-    "hotkey": "scrolllock"
-  },
-  "github": {
-    "repo": "",
-    "token": ""
-  },
   "apps": [
     { "id": "word",       "label": "Word",           "icon": "doc",     "process": "WINWORD",  "path": "winword.exe" },
     { "id": "powerpoint", "label": "PowerPoint",     "icon": "slides",  "process": "POWERPNT", "path": "powerpnt.exe" },
@@ -18,18 +10,22 @@
     { "id": "chrome",     "label": "Chrome",         "icon": "browser", "process": "chrome",   "path": "chrome.exe" }
   ],
   "macros": [
+    { "id": "caps",  "label": "Caps Lock",  "icon": "app",   "accent": "SAGE",     "action": "keys:capslock",   "state": "caps" },
+    { "id": "num",   "label": "Num Lock",   "icon": "app",   "accent": "SKY",      "action": "keys:numlock",    "state": "num" },
+    { "id": "hush",  "label": "Тишина",     "icon": "mute",  "accent": "ROSE",     "action": "mute",            "state": "mute" },
+    { "id": "media", "label": "Медиа",      "icon": "music", "accent": "LAVENDER", "action": "keys:mediaplay",  "state": "media" },
     { "id": "screenshot", "label": "Скриншот",    "icon": "screenshot", "accent": "SKY",      "action": "keys:win+printscreen" },
     { "id": "terminal",   "label": "Терминал",    "icon": "terminal",   "accent": "SAND",     "action": "run:wt.exe" },
     { "id": "files",      "label": "Проводник",   "icon": "files",      "accent": "SKY",      "action": "run:explorer.exe" },
     { "id": "night",      "label": "Ночной свет", "icon": "night",      "accent": "LAVENDER", "action": "run:ms-settings:nightlight" },
-    { "id": "mute",       "label": "Тишина",      "icon": "mute",       "accent": "PEACH",    "action": "mute" },
     { "id": "lock",       "label": "Блокировка",  "icon": "lock",       "accent": "ROSE",     "action": "lock" },
     { "id": "sleep",      "label": "Сон ПК",      "icon": "sleep",      "accent": "LAVENDER", "action": "sleep" },
 
+    { "id": "word.bold",    "label": "Жирный",       "icon": "bold",      "accent": "SAGE",     "action": "keys:ctrl+b", "state": "word.bold",      "app": "word" },
+    { "id": "word.italic",  "label": "Курсив",       "icon": "italic",    "accent": "SKY",      "action": "keys:ctrl+i", "state": "word.italic",    "app": "word" },
+    { "id": "word.under",   "label": "Подчёркнутый", "icon": "underline", "accent": "LAVENDER", "action": "keys:ctrl+u", "state": "word.underline", "app": "word" },
     { "id": "word.save",    "label": "Сохранить",    "icon": "save",   "accent": "SKY",      "action": "keys:ctrl+s", "app": "word" },
-    { "id": "word.saveas",  "label": "Сохранить как","icon": "save",   "accent": "LAVENDER", "action": "keys:f12",    "app": "word" },
     { "id": "word.print",   "label": "Печать",       "icon": "print",  "accent": "SAND",     "action": "keys:ctrl+p", "app": "word" },
-    { "id": "word.new",     "label": "Новый док",    "icon": "add",    "accent": "SAGE",     "action": "keys:ctrl+n", "app": "word" },
 
     { "id": "ppt.save",     "label": "Сохранить",    "icon": "save",   "accent": "SKY",      "action": "keys:ctrl+s",       "app": "powerpoint" },
     { "id": "ppt.show",     "label": "Показ с начала","icon": "play",  "accent": "SAGE",     "action": "keys:f5",           "app": "powerpoint" },
@@ -52,8 +48,4 @@
     { "id": "studio.logcat","label": "Logcat",       "icon": "terminal","accent": "SAND",    "action": "keys:alt+6",         "app": "studio" },
 
     { "id": "chrome.tab",   "label": "Новая вкладка","icon": "tab",       "accent": "SKY",     "action": "keys:ctrl+t",       "app": "chrome" },
-    { "id": "chrome.retab", "label": "Вернуть вкладку","icon": "sync",    "accent": "SAGE",    "action": "keys:ctrl+shift+t", "app": "chrome" },
-    { "id": "chrome.inc",   "label": "Инкогнито",    "icon": "incognito", "accent": "LAVENDER","action": "keys:ctrl+shift+n", "app": "chrome" },
-    { "id": "chrome.dev",   "label": "DevTools",     "icon": "code",      "accent": "SAND",    "action": "keys:f12",          "app": "chrome" }
-  ]
-}
+    { "id": 

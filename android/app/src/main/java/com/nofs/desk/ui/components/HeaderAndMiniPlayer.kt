@@ -33,7 +33,6 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Smartphone
-import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -90,9 +89,6 @@ fun DeskHeader(
     /** Круглая кнопка Git-панели рядом с чипом ПК (видна, когда панель спрятана). */
     showGitButton: Boolean = false,
     onGitClick: () -> Unit = {},
-    /** Игровой режим: тёмная тема, без Git, громкость на первом плане. */
-    gameMode: Boolean = false,
-    onGameModeClick: () -> Unit = {},
     /** Слот справа от часов — компактные графики метрик. */
     afterClock: (@Composable () -> Unit)? = null
 ) {
@@ -132,8 +128,6 @@ fun DeskHeader(
         } else {
             Spacer(Modifier.weight(1f))
         }
-        GameModeButton(active = gameMode, onClick = onGameModeClick)
-        Spacer(Modifier.width(8.dp))
         ConnectionChip(hostName, connection, onSettingsClick)
         AnimatedVisibility(
             visible = showGitButton,
@@ -159,29 +153,6 @@ fun DeskHeader(
                 }
             }
         }
-    }
-}
-
-/** Отдельная кнопка входа/выхода из игрового режима — всегда на виду в шапке. */
-@Composable
-private fun GameModeButton(active: Boolean, onClick: () -> Unit) {
-    val palette = LocalDeskPalette.current
-    val bg = if (active) palette.text else palette.card
-    val fg = if (active) palette.card else palette.muted
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(bg)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.SportsEsports,
-            contentDescription = if (active) "Выйти из игрового режима" else "Игровой режим",
-            tint = fg,
-            modifier = Modifier.size(18.dp)
-        )
     }
 }
 
@@ -391,3 +362,4 @@ fun MiniPlayer(
         )
     }
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                

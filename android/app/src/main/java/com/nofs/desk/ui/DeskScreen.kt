@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -52,24 +51,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import com.nofs.desk.DeskViewModel
-import com.nofs.desk.data.ConnectionStatus
 import com.nofs.desk.data.DeskCommand
-import com.nofs.desk.data.ScenePhase
-import com.nofs.desk.data.SceneState
 import com.nofs.desk.ui.components.BottomPlayerPill
 import com.nofs.desk.ui.components.DeskHeader
 import com.nofs.desk.ui.components.MacroPanel
 import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
-import com.nofs.desk.ui.components.MixerPanel
 import com.nofs.desk.ui.components.PlayerSheet
-import com.nofs.desk.ui.components.SceneOverlay
-import com.nofs.desk.ui.components.RightPanel
 import com.nofs.desk.ui.components.Screensaver
 import com.nofs.desk.ui.components.SettingsDialog
 import com.nofs.desk.ui.components.animatePlayerProgress
 import com.nofs.desk.ui.components.rememberMetricHistory
-import com.nofs.desk.ui.theme.DarkDeskPalette
 import com.nofs.desk.ui.theme.DeskCard
 import com.nofs.desk.ui.theme.DeskText
 import com.nofs.desk.ui.theme.LightDeskPalette
@@ -77,8 +69,12 @@ import com.nofs.desk.ui.theme.LocalDeskPalette
 
 /**
  * Точка входа экрана: планшет (smallestScreenWidthDp >= 600, стандартный
- * Material-порог) получает прежний полнофункциональный layout, телефон —
- * урезанный PhoneDeskScreen (портрет+альбом, см. PhoneDeskScreen.kt).
+ * Material-порог) получает полный layout, телефон — урезанный PhoneDeskScreen.
+ *
+ * Ядро продукта (ветка feature/core): метрики ПК, контекстные рефлективные
+ * макросы, плеер. Плюс скринсейвер и настройки подключения. Всё остальное
+ * (git, микшер, плейтайм, паспорт файла, сцена сборки, игровой режим)
+ * отрезано из склейки — компоненты лежат в components/, но не рендерятся.
  */
 @Composable
 fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
@@ -87,11 +83,10 @@ fun DeskScreen(viewModel: DeskViewModel = viewModel()) {
 }
 
 /**
- * Сборка планшетного экрана: две колонки 1.7 : 1.
- * Слева — шапка + мини-плеер + метрики + контекстные макросы (без скролла,
- * сетка адаптивная — при спрятанном Git кнопок в ряду помещается больше).
- * Справа — слот Git-панели: прячется с анимацией, возвращается круглой
- * кнопкой у чипа ПК; чёрный плеер выезжает В ЭТОМ слоте, подменяя её.
+ * Планшет: две колонки 1.7 : 1.
+ * Слева — шапка + метрики + контекстные макросы (без скролла).
+ * Справа — слот плеера: колонка схлопнута, пока плеер закрыт, и плавно
+ * разворачивается, когда чёрный плеер выезжает по её ширине.
  */
 @Composable
 private fun TabletDeskScreen(viewModel: DeskViewModel) {
@@ -99,12 +94,9 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
     val settings by viewModel.settings.collectAsState()
 
     var playerOpen by rememberSaveable { mutableStateOf(false) }
-    var gitVisible by rememberSaveable { mutableStateOf(true) }
     var metricsCompact by rememberSaveable { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    // Игровой режим: отдельная кнопка в шапке, тёмная тема, без Git, громкость на первом плане.
-    var gameMode by rememberSaveable { mutableStateOf(false) }
-    val palette = if (gameMode) DarkDeskPalette else LightDeskPalette
+    val palette = LightDeskPalette
     val playerProgress = animatePlayerProgress(playerOpen)
 
     // История метрик для спарклайнов — копится всегда
@@ -131,27 +123,16 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
         }
     }
 
-    // При подключении к ПК сразу просим свежий git-срез
-    LaunchedEffect(state.connection) {
-        if (state.connection == ConnectionStatus.CONNECTED) {
-            viewModel.send(DeskCommand.GitRefresh)
-        }
-    }
-
     // Нет медиа-сессии — прячем мини-плеер и закрываем большой плеер
     val hasMedia = state.media.title.isNotBlank()
     LaunchedEffect(hasMedia) {
         if (!hasMedia && playerOpen) playerOpen = false
     }
 
-    // Правая колонка: плавно схлопывается/разворачивается по весу.
-    // В игровом режиме слот (громкость) всегда на месте — его нельзя спрятать.
+    // Правая колонка (слот плеера) плавно схлопывается/разворачивается по весу.
     // Та же длительность/easing, что у playerProgress (animatePlayerProgress в
-    // PlayerSheet.kt) — иначе при открытии плеера со спрятанной Git-панелью
-    // колонка расширяется медленнее/быстрее, чем плеер выезжает по её ширине
-    // (translationX = size.width * (1 - progress)), и он на кадр-другой
-    // наезжает на левую колонку с макросами.
-    val rightTarget = if (gameMode || gitVisible || playerProgress > 0.01f) 1f else 0f
+    // PlayerSheet.kt) — иначе плеер на кадр-другой наезжает на левую колонку.
+    val rightTarget = if (playerProgress > 0.01f) 1f else 0f
     val rightWeight by animateFloatAsState(
         targetValue = rightTarget,
         animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing),
@@ -192,10 +173,6 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
                     connection = state.connection,
                     collapse = 0f,
                     onSettingsClick = { showSettings = true },
-                    showGitButton = !gameMode && !gitVisible,
-                    onGitClick = { gitVisible = true },
-                    gameMode = gameMode,
-                    onGameModeClick = { gameMode = !gameMode },
                     afterClock = if (metricsCompact) {
                         {
                             MetricSparkStrip(
@@ -253,7 +230,7 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
                 }
             }
 
-            // ---------- Правая колонка: Git-панель / плеер ----------
+            // ---------- Правая колонка: слот плеера ----------
             if (rightWeight > 0.001f) {
                 Box(
                     modifier = Modifier
@@ -261,51 +238,6 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
                         .fillMaxHeight()
                         .graphicsLayer { alpha = rightWeight }
                 ) {
-                    if (gameMode && playerProgress < 0.99f) {
-                        // Игровой режим: слот полностью занят громкостью, без Git/Времени.
-                        MixerPanel(
-                            audio = state.audio,
-                            onMaster = { viewModel.send(DeskCommand.AudioMaster(it)) },
-                            onMuteMaster = { viewModel.send(DeskCommand.AudioMuteMaster) },
-                            onMuteMic = { viewModel.send(DeskCommand.AudioMuteMic) },
-                            onSession = { id, v ->
-                                viewModel.send(DeskCommand.AudioSessionVolume(id, v))
-                            },
-                            onMuteSession = { viewModel.send(DeskCommand.AudioMuteSession(it)) },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer { alpha = 1f - playerProgress }
-                        )
-                    } else if (gitVisible && playerProgress < 0.99f) {
-                        RightPanel(
-                            git = state.git,
-                            audio = state.audio,
-                            playtime = state.playtime,
-                            filePassport = state.filePassport,
-                            onGitRefresh = { viewModel.send(DeskCommand.GitRefresh) },
-                            onGitPull = { viewModel.send(DeskCommand.GitPull) },
-                            onGitCommit = { viewModel.send(DeskCommand.GitCommit(it)) },
-                            onGitPush = { viewModel.send(DeskCommand.GitPush) },
-                            onGitCheckout = { viewModel.send(DeskCommand.GitCheckout(it)) },
-                            onGitHubRefresh = { viewModel.send(DeskCommand.GitHubRefresh) },
-                            // Сборка вынесена в макросы (build:<id>), строка в git-панели больше не нужна
-                            remoteTypeActive = state.remoteTypeActive,
-                            remoteTypeBuffer = state.remoteTypeBuffer,
-                            onRemoteTypeStop = { viewModel.send(DeskCommand.RemoteTypeStop) },
-                            onAudioMaster = { viewModel.send(DeskCommand.AudioMaster(it)) },
-                            onAudioMuteMaster = { viewModel.send(DeskCommand.AudioMuteMaster) },
-                            onAudioMuteMic = { viewModel.send(DeskCommand.AudioMuteMic) },
-                            onAudioSession = { id, v ->
-                                viewModel.send(DeskCommand.AudioSessionVolume(id, v))
-                            },
-                            onAudioMuteSession = { viewModel.send(DeskCommand.AudioMuteSession(it)) },
-                            onHide = { gitVisible = false },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer { alpha = 1f - playerProgress }
-                        )
-                    }
-
                     PlayerSheet(
                         media = state.media,
                         progress = playerProgress,
@@ -336,8 +268,6 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
             )
         }
 
-        // «Паспорт файла» переехал в страницу правого слота (RightPage.FILE)
-
         // Ошибки от агента
         SnackbarHost(
             hostState = snackbarHost,
@@ -352,24 +282,7 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
             )
         }
 
-        // Полноэкранная сцена сборки/тестов («Тень билда»)
-        var sceneDismissed by remember { mutableLongStateOf(0L) }
-        val sceneVisible = state.scene.phase != ScenePhase.IDLE &&
-            state.scene.at != sceneDismissed
-        LaunchedEffect(state.scene.phase, state.scene.at) {
-            if (state.scene.phase == ScenePhase.SUCCESS ||
-                state.scene.phase == ScenePhase.FAILED
-            ) {
-                delay(10_000)
-                sceneDismissed = state.scene.at
-            }
-        }
-        SceneOverlay(
-            scene = if (sceneVisible) state.scene else SceneState(),
-            onDismiss = { sceneDismissed = state.scene.at }
-        )
-
-        // Скринсейвер поверх всего (+ сводка дня второй строкой)
+        // Скринсейвер поверх всего
         Screensaver(
             clock = state.clock,
             date = state.date,
@@ -393,5 +306,4 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
         )
     }
 }
-
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        

@@ -2,8 +2,8 @@ using NofsAgent;
 
 /// <summary>
 /// NOFS Agent — трей-приложение.
-/// Поднимает WebSocket-сервер для планшета, UDP-автопоиск и сервисы
-/// (метрики LHM, медиа-сессия Windows, контекст окна, макросы, git/GitHub).
+/// Поднимает WebSocket-сервер для планшета, UDP-автопоиск и сервисы ядра
+/// (метрики LHM, медиа-сессия Windows, контекст окна, рефлективные макросы).
 /// </summary>
 internal static class Program
 {
@@ -46,7 +46,9 @@ internal static class Program
             return;
         }
 
-        ExplorerMenu.Register();
+        // Ядро (feature/core): пункт Проводника «отправить папку» отрезан —
+        // подчищаем запись в реестре, если осталась от прошлых версий.
+        ExplorerMenu.Unregister();
 
         Application.Run(new TrayContext(host, config));
         host.Dispose();
@@ -64,11 +66,4 @@ internal static class Program
             if (!resp.IsSuccessStatusCode)
                 throw new Exception($"HTTP {(int)resp.StatusCode}");
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"Агент не отвечает — запусти NOFS Agent и повтори.\n({ex.Message})",
-                "NOFS Agent", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-    }
-}
+        catch (Excep
