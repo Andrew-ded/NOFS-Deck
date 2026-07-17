@@ -191,7 +191,7 @@ class WebSocketDeskDataSource(
                 val m = ProtocolJson.decodeFromJsonElement<MacrosMsg>(obj)
                 _state.update { st ->
                     st.copy(macros = m.macros.map {
-                        Macro(it.id, it.label, it.icon, it.accent.toAccent(), it.app)
+                        Macro(it.id, it.label, it.icon, it.accent.toAccent(), it.app, it.active)
                     })
                 }
             }

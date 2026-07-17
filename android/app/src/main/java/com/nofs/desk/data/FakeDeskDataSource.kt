@@ -250,9 +250,17 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
                 it.copy(media = it.media.copy(positionSec = (d * command.fraction).roundToInt()))
             }
             is DeskCommand.RunMacro -> {
-                // Демо: кнопка запуска (икона build/play/debug) прогоняет сцену
                 val icon = _state.value.macros.firstOrNull { it.id == command.id }?.icon?.lowercase()
-                if (icon in setOf("build", "hammer", "play", "run", "debug", "tests", "test", "check")) runDemoBuild()
+                if (icon in setOf("build", "hammer", "play", "run", "debug", "tests", "test", "check")) {
+                    runDemoBuild()
+                } else {
+                    // Демо рефлективности: тап переключает подсветку (тумблер)
+                    _state.update { st ->
+                        st.copy(macros = st.macros.map {
+                            if (it.id == command.id) it.copy(active = !it.active) else it
+                        })
+                    }
+                }
             }
             is DeskCommand.FocusApp -> _state.update { st ->
                 st.copy(apps = st.apps.map { a -> a.copy(isActive = a.id == command.id) })
@@ -330,6 +338,9 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
 
     private companion object {
         val demoMacros = listOf(
+            // рефлективные тумблеры (подсветка по факту состояния ПК)
+            Macro("caps", "Caps Lock", "app", AccentTone.SAGE, active = true),
+            Macro("media", "Медиа", "music", AccentTone.LAVENDER),
             // системные
             Macro("screenshot", "Скриншот", "screenshot", AccentTone.SKY),
             Macro("terminal", "Терминал", "terminal", AccentTone.SAND),

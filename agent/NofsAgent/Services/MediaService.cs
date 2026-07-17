@@ -30,6 +30,18 @@ public sealed class MediaService
         _manager?.GetCurrentSession();
 
     /// <summary>Снять текущее состояние. forceArt — прислать обложку даже без смены трека (новый клиент).</summary>
+    /// <summary>Дешёвая проверка «играет ли» — для рефлективных макросов.</summary>
+    public bool IsPlaying()
+    {
+        try
+        {
+            var s = Session;
+            return s != null && s.GetPlaybackInfo().PlaybackStatus ==
+                GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+        }
+        catch { return false; }
+    }
+
     public async Task<MediaMsg> ReadAsync(bool forceArt = false)
     {
         var session = Session;

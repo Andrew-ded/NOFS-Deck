@@ -49,7 +49,7 @@ public sealed record ContextMsg(List<AppChipDto> Apps)
     public string Type => "context";
 }
 
-public sealed record MacroDto(string Id, string Label, string Icon, string Accent, string App);
+public sealed record MacroDto(string Id, string Label, string Icon, string Accent, string App, bool Active);
 
 public sealed record MacrosMsg(List<MacroDto> Macros)
 {

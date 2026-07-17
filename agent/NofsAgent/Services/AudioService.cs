@@ -104,6 +104,34 @@ public sealed class AudioService : IDisposable
         }
     }
 
+    /// <summary>Дешёвая проверка мьюта мастера (без перечисления сессий) — для рефлективных макросов.</summary>
+    public bool MasterMuted()
+    {
+        lock (_gate)
+        {
+            try
+            {
+                using var d = _enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                return d.AudioEndpointVolume.Mute;
+            }
+            catch { return false; }
+        }
+    }
+
+    /// <summary>Дешёвая проверка мьюта микрофона.</summary>
+    public bool MicMuted()
+    {
+        lock (_gate)
+        {
+            try
+            {
+                using var d = _enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+                return d.AudioEndpointVolume.Mute;
+            }
+            catch { return false; }
+        }
+    }
+
     public void ToggleMasterMute()
     {
         lock (_gate)

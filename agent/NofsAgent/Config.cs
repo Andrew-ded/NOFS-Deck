@@ -123,4 +123,7 @@ public sealed class MacroConfig
     ///   "lock" | "sleep" | "mute"  — блокировка / сон / глушение звука
     /// </summary>
     [JsonPropertyName("action")] public string Action { get; set; } = "";
+    /// <summary>Отражаемое состояние для рефлективной кнопки:
+    /// "caps" | "num" | "scroll" | "mic" | "mute" | "media" (пусто — обычная кнопка).</summary>
+    [JsonPropertyName("state")] public string State { get; set; } = "";
 }

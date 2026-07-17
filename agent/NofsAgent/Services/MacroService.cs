@@ -13,8 +13,13 @@ public sealed class MacroService(List<MacroConfig> macros)
     /// <summary>Макрос запросил сборку build:&lt;id&gt; — обрабатывает AgentHost через BuildService.</summary>
     public event Action<string>? BuildRequested;
 
-    public List<MacroDto> ToDtos() => macros.Select(m =>
-        new MacroDto(m.Id, m.Label, m.Icon, m.Accent, m.App)).ToList();
+    /// <summary>DTO с рефлективным состоянием: eval(state) → активна ли кнопка (null = обычная).</summary>
+    public List<MacroDto> ToDtos(Func<string, bool?> eval) => macros.Select(m =>
+        new MacroDto(m.Id, m.Label, m.Icon, m.Accent, m.App, eval(m.State) == true)).ToList();
+
+    /// <summary>Сигнатура состояния всех макросов — для детекта изменений (что пушить).</summary>
+    public string StateSignature(Func<string, bool?> eval) =>
+        string.Concat(macros.Select(m => eval(m.State) == true ? "1" : "0"));
 
     public void Run(string id)
     {
@@ -95,6 +100,7 @@ public sealed class MacroService(List<MacroConfig> macros)
         ["ctrl"] = 0x11, ["alt"] = 0x12, ["shift"] = 0x10, ["win"] = 0x5B,
         ["enter"] = 0x0D, ["esc"] = 0x1B, ["tab"] = 0x09, ["space"] = 0x20,
         ["printscreen"] = 0x2C, ["pause"] = 0x13, ["delete"] = 0x2E,
+        ["capslock"] = 0x14, ["numlock"] = 0x90, ["scrolllock"] = 0x91,
         ["volumemute"] = 0xAD, ["volumeup"] = 0xAF, ["volumedown"] = 0xAE,
         ["medianext"] = 0xB0, ["mediaprev"] = 0xB1, ["mediaplay"] = 0xB3,
         ["f1"] = 0x70, ["f2"] = 0x71, ["f3"] = 0x72, ["f4"] = 0x73,

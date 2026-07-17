@@ -68,7 +68,9 @@ data class MacroDto(
     val icon: String = "bolt",
     val accent: String = "SAGE",
     /** Привязка: "" = системный, иначе id приложения из контекста. */
-    val app: String = ""
+    val app: String = "",
+    /** Рефлективное состояние: true = тумблер сейчас включён (подсветить кнопку). */
+    val active: Boolean = false
 )
 
 @Serializable

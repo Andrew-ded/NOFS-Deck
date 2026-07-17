@@ -41,7 +41,8 @@ data class Macro(
     val label: String,
     val icon: String,          // строковый ключ -> MacroIcons.kt
     val accent: AccentTone,
-    val app: String = ""
+    val app: String = "",
+    val active: Boolean = false // рефлективное состояние: тумблер включён (подсветить)
 )
 
 /** Чип приложения в контекстной строке (активное окно подсвечено). */

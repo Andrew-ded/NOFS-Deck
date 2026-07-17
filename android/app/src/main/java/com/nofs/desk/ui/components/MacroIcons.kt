@@ -6,6 +6,9 @@ import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.FormatBold
+import androidx.compose.material.icons.rounded.FormatItalic
+import androidx.compose.material.icons.rounded.FormatUnderlined
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -65,6 +68,9 @@ fun macroIcon(key: String): ImageVector = when (key.lowercase()) {
     "play", "run" -> Icons.Rounded.PlayArrow
     "debug" -> Icons.Rounded.BugReport
     "tests", "test", "check" -> Icons.Rounded.Checklist
+    "bold" -> Icons.Rounded.FormatBold
+    "italic" -> Icons.Rounded.FormatItalic
+    "underline" -> Icons.Rounded.FormatUnderlined
     "search", "find" -> Icons.Rounded.Search
     "add", "new" -> Icons.Rounded.Add
     "filter" -> Icons.Rounded.FilterList

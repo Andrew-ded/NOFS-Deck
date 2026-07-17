@@ -21,6 +21,8 @@ public sealed class AgentHost : IDisposable
     private readonly GitService _git;
     private readonly GitHubService _github;
     private readonly AudioService _audio = new();
+    private MacroStateService _macroState = null!;
+    private string _lastMacroSig = "";
     private readonly PlaytimeService _playtime;
     private readonly BuildService _build;
     private readonly DailyService _daily;
@@ -39,6 +41,7 @@ public sealed class AgentHost : IDisposable
         _metrics = new MetricsService();
         _context = new ContextService(config.Apps);
         _macros = new MacroService(config.Macros);
+        _macroState = new MacroStateService(_audio, _media);
         _git = new GitService(config.RepoPath);
         _github = new GitHubService(config.GitHub);
         _playtime = new PlaytimeService(config.Apps);
@@ -89,6 +92,7 @@ public sealed class AgentHost : IDisposable
         _ = LoopAsync(1000, PushFastAsync);      // метрики + медиа
         _ = LoopAsync(500, PushContextAsync);    // активное окно (частый опрос — низкая задержка)
         _ = LoopAsync(600, PushAudioAsync);      // звук/микшер (отдельно от контекста)
+        _ = LoopAsync(250, PushMacroStateAsync); // рефлективные кнопки: подсветка по факту ПК
         _ = PlaytimeLoopAsync();                 // учёт времени (тикает и без клиентов)
         _ = ExternalBuildLoopAsync();            // грубая детекция сборок из IDE
         _ = DailyLoopAsync();                    // сводка дня раз в 5 мин
@@ -128,6 +132,15 @@ public sealed class AgentHost : IDisposable
     private async Task PushAudioAsync()
     {
         await _server.BroadcastAsync(_audio.Read());
+    }
+
+    /// <summary>Рефлективные кнопки: если сменилось хоть одно отражаемое состояние — пушим макросы.</summary>
+    private async Task PushMacroStateAsync()
+    {
+        var sig = _macros.StateSignature(_macroState.Eval);
+        if (sig == _lastMacroSig) return;
+        _lastMacroSig = sig;
+        await _server.BroadcastAsync(new MacrosMsg(_macros.ToDtos(_macroState.Eval)));
     }
 
     /// <summary>Плейтайм тикает всегда (даже без планшета), пуш — раз в 30 с.</summary>
@@ -230,7 +243,7 @@ public sealed class AgentHost : IDisposable
     private async Task SendSnapshotAsync(Guid clientId)
     {
         await _server.SendAsync(clientId, new HelloMsg(Environment.MachineName));
-        await _server.SendAsync(clientId, new MacrosMsg(_macros.ToDtos()));
+        await _server.SendAsync(clientId, new MacrosMsg(_macros.ToDtos(_macroState.Eval)));
         await _server.SendAsync(clientId, _context.Read());
         await _server.SendAsync(clientId, _metrics.Read());
         await _server.SendAsync(clientId, await _media.ReadAsync(forceArt: true));

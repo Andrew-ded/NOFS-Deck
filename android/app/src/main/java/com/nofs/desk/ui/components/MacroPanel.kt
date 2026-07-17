@@ -2,7 +2,12 @@ package com.nofs.desk.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -32,11 +37,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -273,17 +282,50 @@ private fun ContextChip(
     }
 }
 
-/** Квадратная кнопка макроса: иконка в пастельном круге + подпись. */
+/**
+ * Живая кнопка макроса: рефлективная (подсветка по факту состояния ПК — тумблер),
+ * с гаптикой на тап и физикой нажатия (проседает с пружиной). Активная кнопка
+ * заливается акцентом и получает рамку — видно, что состояние ВКЛючено.
+ */
 @Composable
 private fun MacroCard(macro: Macro, onClick: () -> Unit) {
     val palette = LocalDeskPalette.current
     val pastel = macro.accent.pastel()
+    val haptic = LocalHapticFeedback.current
+
+    // Физика нажатия: проседание с пружинкой
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.93f else 1f,
+        animationSpec = spring(dampingRatio = 0.45f, stiffness = 600f),
+        label = "macroPress"
+    )
+
+    // Рефлективное состояние: активная кнопка заливается акцентом
+    val cardBg by animateColorAsState(
+        targetValue = if (macro.active) pastel.bar.copy(alpha = 0.30f) else palette.card,
+        animationSpec = tween(220), label = "macroActiveBg"
+    )
+    val circleBg by animateColorAsState(
+        targetValue = if (macro.active) pastel.bar else pastel.bg,
+        animationSpec = tween(220), label = "macroActiveCircle"
+    )
+
     Column(
         modifier = Modifier
             .aspectRatio(1f)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(18.dp))
-            .background(palette.card)
-            .clickable(onClick = onClick)
+            .background(cardBg)
+            .then(
+                if (macro.active) Modifier.border(2.dp, pastel.bar, RoundedCornerShape(18.dp))
+                else Modifier
+            )
+            .clickable(interactionSource = interaction, indication = null) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
             .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -292,7 +334,7 @@ private fun MacroCard(macro: Macro, onClick: () -> Unit) {
             modifier = Modifier
                 .size(38.dp)
                 .clip(CircleShape)
-                .background(pastel.bg),
+                .background(circleBg),
             contentAlignment = Alignment.Center
         ) {
             Icon(
