@@ -23,7 +23,6 @@ public sealed class AgentHost : IDisposable
     private readonly MacroService _macros;
     private readonly AudioService _audio = new();
     private readonly MacroStateService _macroState;
-    private readonly ClaudeUsageService _claude;
     private readonly PortWatcherService _ports = new();
     private readonly DownloadsWatcherService _downloads;
     private readonly DialogWatcherService _dialogs = new();
@@ -40,7 +39,6 @@ public sealed class AgentHost : IDisposable
         _context = new ContextService(config.Apps);
         _macros = new MacroService(config.Macros);
         _macroState = new MacroStateService(_audio, _media);
-        _claude = new ClaudeUsageService(config);
         _downloads = new DownloadsWatcherService();
 
         _server = new WsServer(config.Port);
@@ -88,7 +86,6 @@ public sealed class AgentHost : IDisposable
         _ = LoopAsync(1000, PushFastAsync);       // метрики + медиа
         _ = LoopAsync(5000, PushContextAsync);    // контекст: медленный фолбэк (смена заголовка без смены фокуса)
         _ = LoopAsync(250, PushMacroStateAsync);  // рефлективные кнопки: подсветка по факту ПК
-        _ = LoopAsync(60_000, PushClaudeAsync);   // лимиты Claude (ccusage раз в минуту)
         _ports.Start();                           // порты: свой цикл 3 с внутри сервиса
         // Вахтёр загрузок: события файловой системы, не поллинг-цикл
         _downloads.Start();
@@ -140,11 +137,6 @@ public sealed class AgentHost : IDisposable
         });
     }
 
-    private async Task PushClaudeAsync()
-    {
-        await _server.BroadcastAsync(_claude.Tick());
-    }
-
     /// <summary>Рефлективные кнопки: если сменилось хоть одно отражаемое состояние — пушим макросы.</summary>
     private async Task PushMacroStateAsync()
     {
@@ -163,7 +155,6 @@ public sealed class AgentHost : IDisposable
         await _server.SendAsync(clientId, _context.Read());
         await _server.SendAsync(clientId, _metrics.Read());
         await _server.SendAsync(clientId, await _media.ReadAsync(forceArt: true));
-        await _server.SendAsync(clientId, _claude.Tick());
         // Порты — текущее состояние; download/dialog транзиентные, новому клиенту не шлём
         await _server.SendAsync(clientId, _ports.Current);
     }
@@ -181,11 +172,6 @@ public sealed class AgentHost : IDisposable
 
             case "runMacro": if (cmd.Id != null) _macros.Run(cmd.Id); break;
             case "focusApp": if (cmd.Id != null) _context.FocusApp(cmd.Id); break;
-
-            case "claudeCal":
-                _claude.Calibrate(cmd.Id ?? "window", cmd.Value ?? 0f);
-                await _server.BroadcastAsync(_claude.Current);
-                break;
 
             case "openPort": _ports.Open((int)(cmd.Value ?? 0)); break;
             case "openDownload": _downloads.OpenLast(); break;

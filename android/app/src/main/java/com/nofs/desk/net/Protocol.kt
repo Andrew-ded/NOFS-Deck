@@ -203,21 +203,6 @@ data class FilePassportMsg(
     val usedIn: List<String> = emptyList()
 )
 
-/**
- * Лимиты Claude: токены активного 5-часового окна + сумма за 7 дней.
- * pct = -1 — не откалибровано (лимит неизвестен). ok = false — ccusage
- * недоступен на ПК, карточку не показываем.
- */
-@Serializable
-data class ClaudeUsageMsg(
-    val windowTokens: Long = 0,
-    val windowPct: Int = -1,
-    val windowResetAt: String = "",
-    val weekTokens: Long = 0,
-    val weekPct: Int = -1,
-    val ok: Boolean = false
-)
-
 /** Слушающий TCP-порт на ПК: кто на каком порту сидит. Зеркало PortDto/PortsMsg. */
 @Serializable
 data class PortDto(
@@ -299,11 +284,6 @@ object Cmd {
 
     fun cancelBuild(): JsonObject = buildJsonObject {
         put("type", "cmd"); put("cmd", "cancelBuild")
-    }
-
-    /** Калибровка лимитов Claude: scope "window"|"week", percent из приложения Anthropic. */
-    fun claudeCalibrate(scope: String, percent: Float): JsonObject = buildJsonObject {
-        put("type", "cmd"); put("cmd", "claudeCal"); put("id", scope); put("value", percent)
     }
 
     /** Тап по чипу порта: открыть http://localhost:порт в браузере ПК. */

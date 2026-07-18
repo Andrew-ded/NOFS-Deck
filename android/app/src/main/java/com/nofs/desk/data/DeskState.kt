@@ -168,19 +168,6 @@ data class PlaytimeState(
     val week: List<PlaytimeEntry> = emptyList()
 )
 
-/**
- * Лимиты Claude (с ПК, ccusage). pct = -1 — не откалибровано; ok = false —
- * данных нет (ccusage недоступен), карточка скрыта.
- */
-data class ClaudeUsage(
-    val windowTokens: Long = 0,
-    val windowPct: Int = -1,
-    val windowResetAt: String = "",
-    val weekTokens: Long = 0,
-    val weekPct: Int = -1,
-    val ok: Boolean = false
-)
-
 /** Слушающий порт ПК — чип на карточке «Порты». */
 data class PortEntry(
     val port: Int,
@@ -229,7 +216,6 @@ data class DeskState(
     val daily: DailySummary = DailySummary(),
     val builds: List<BuildOption> = emptyList(),
     val filePassport: FilePassportState = FilePassportState(),
-    val claude: ClaudeUsage = ClaudeUsage(),
     val ports: List<PortEntry> = emptyList(),
     val download: DownloadState = DownloadState(),
     val dialog: DialogMirrorState = DialogMirrorState()
@@ -256,8 +242,6 @@ sealed interface DeskCommand {
     data class AudioMuteSession(val id: String) : DeskCommand
     data class RunBuild(val id: String) : DeskCommand
     data object CancelBuild : DeskCommand
-    /** Калибровка лимитов Claude: scope "window"|"week", percent из приложения Anthropic. */
-    data class ClaudeCalibrate(val scope: String, val percent: Float) : DeskCommand
     /** Тап по чипу порта: открыть localhost:порт в браузере ПК. */
     data class OpenPort(val port: Int) : DeskCommand
     /** Открыть последний скачанный файл на ПК. */

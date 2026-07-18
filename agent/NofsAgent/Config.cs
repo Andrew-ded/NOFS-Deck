@@ -18,7 +18,6 @@ public sealed class Config
     [JsonPropertyName("passportAnalyzer")] public string PassportAnalyzer { get; set; } = "auto";
     /// <summary>Доп. корни для поиска активного файла (кроме git-папки и авто-проектов IDE).</summary>
     [JsonPropertyName("passportRoots")] public List<string> PassportRoots { get; set; } = new();
-    [JsonPropertyName("claude")] public ClaudeConfig Claude { get; set; } = new();
 
     public static string FilePath =>
         Path.Combine(AppContext.BaseDirectory, "config.json");
@@ -97,16 +96,6 @@ public sealed class BuildConfig
     [JsonPropertyName("cwd")] public string Cwd { get; set; } = "";
     /// <summary>"studio" | "rider" — брать путь из текущего открытого проекта IDE.</summary>
     [JsonPropertyName("ide")] public string Ide { get; set; } = "";
-}
-
-/// <summary>
-/// Откалиброванные потолки лимитов Claude (в токенах ccusage). 0 = неизвестно.
-/// Заполняются командой калибровки с планшета: limit = tokens / pct * 100.
-/// </summary>
-public sealed class ClaudeConfig
-{
-    [JsonPropertyName("windowLimit")] public long WindowLimit { get; set; }
-    [JsonPropertyName("weekLimit")] public long WeekLimit { get; set; }
 }
 
 public sealed class MacroConfig
