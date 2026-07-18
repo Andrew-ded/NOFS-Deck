@@ -7,7 +7,8 @@ namespace NofsAgent;
 /// Склейка ядра: сервер + сервисы + циклы рассылки.
 /// Ядро продукта (ветка feature/core): метрики, контекстные рефлективные
 /// макросы, плеер. Метрики/медиа — push каждую секунду (только когда есть
-/// клиенты), контекст — каждые 0.5 с, состояния макросов — каждые 0.25 с.
+/// клиенты), контекст окна — по хуку смены фокуса (+ фолбэк 5 с),
+/// состояния макросов — каждые 0.25 с.
 /// Остальные сервисы (git, builds, playtime, passport, remote type, daily)
 /// отрезаны из склейки — файлы лежат рядом, но не грузятся.
 /// </summary>
@@ -23,6 +24,10 @@ public sealed class AgentHost : IDisposable
     private readonly AudioService _audio = new();
     private readonly MacroStateService _macroState;
     private readonly ClaudeUsageService _claude;
+    private readonly PortWatcherService _ports = new();
+    private readonly DownloadsWatcherService _downloads;
+    private readonly DialogWatcherService _dialogs = new();
+    private ForegroundWatcher? _foreground;
     private string _lastMacroSig = "";
     private readonly CancellationTokenSource _cts = new();
 
@@ -36,12 +41,44 @@ public sealed class AgentHost : IDisposable
         _macros = new MacroService(config.Macros);
         _macroState = new MacroStateService(_audio, _media);
         _claude = new ClaudeUsageService(config);
+        _downloads = new DownloadsWatcherService();
 
         _server = new WsServer(config.Port);
         _server.CommandReceived += cmd => _ = HandleCommandAsync(cmd);
         _server.ClientConnected += SendSnapshotAsync;
         _server.ClientCountChanged += n => ClientCountChanged?.Invoke(n);
         _discovery = new DiscoveryResponder(config.DiscoveryPort, config.Port);
+
+        // Порты: пуш события при смене набора слушателей (сервис сам фильтрует шум)
+        _ports.Updated += msg => _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (!_server.HasClients) return;
+                await _server.BroadcastAsync(msg);
+            }
+            catch (Exception ex) { Log.Warn($"ports push: {ex.Message}"); }
+        });
+        // Вахтёр загрузок: active раз в секунду / однократный done — сервис сам рейт-лимитирует
+        _downloads.Updated += msg => _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (!_server.HasClients) return;
+                await _server.BroadcastAsync(msg);
+            }
+            catch (Exception ex) { Log.Warn($"download push: {ex.Message}"); }
+        });
+        // Зеркало диалогов: ошибка/копирование — событие сразу в сокет
+        _dialogs.Updated += msg => _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (!_server.HasClients) return;
+                await _server.BroadcastAsync(msg);
+            }
+            catch (Exception ex) { Log.Warn($"dialog push: {ex.Message}"); }
+        });
     }
 
     public async Task StartAsync()
@@ -49,9 +86,16 @@ public sealed class AgentHost : IDisposable
         await _media.InitAsync();
         _server.Start();
         _ = LoopAsync(1000, PushFastAsync);       // метрики + медиа
-        _ = LoopAsync(500, PushContextAsync);     // активное окно
+        _ = LoopAsync(5000, PushContextAsync);    // контекст: медленный фолбэк (смена заголовка без смены фокуса)
         _ = LoopAsync(250, PushMacroStateAsync);  // рефлективные кнопки: подсветка по факту ПК
         _ = LoopAsync(60_000, PushClaudeAsync);   // лимиты Claude (ccusage раз в минуту)
+        _ports.Start();                           // порты: свой цикл 3 с внутри сервиса
+        // Вахтёр загрузок: события файловой системы, не поллинг-цикл
+        _downloads.Start();
+        _dialogs.Start(); // отлов #32770: ошибки + прогресс копирования
+        // Активное окно — событием, а не поллингом: хук фокуса → мгновенный пуш
+        _foreground = new ForegroundWatcher();
+        _foreground.Changed += OnForegroundChanged;
         Log.Info($"agent up (core): ws://0.0.0.0:{_config.Port}/ws, discovery :{_config.DiscoveryPort}");
     }
 
@@ -82,6 +126,20 @@ public sealed class AgentHost : IDisposable
         await _server.BroadcastAsync(_context.Read());
     }
 
+    /// <summary>Смена фокуса окна: пушим контекст сразу, не дожидаясь фолбэк-цикла.</summary>
+    private void OnForegroundChanged()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (!_server.HasClients) return;
+                await PushContextAsync();
+            }
+            catch (Exception ex) { Log.Warn($"foreground push: {ex.Message}"); }
+        });
+    }
+
     private async Task PushClaudeAsync()
     {
         await _server.BroadcastAsync(_claude.Tick());
@@ -106,6 +164,8 @@ public sealed class AgentHost : IDisposable
         await _server.SendAsync(clientId, _metrics.Read());
         await _server.SendAsync(clientId, await _media.ReadAsync(forceArt: true));
         await _server.SendAsync(clientId, _claude.Tick());
+        // Порты — текущее состояние; download/dialog транзиентные, новому клиенту не шлём
+        await _server.SendAsync(clientId, _ports.Current);
     }
 
     // ---------- команды планшета ----------
@@ -127,6 +187,10 @@ public sealed class AgentHost : IDisposable
                 await _server.BroadcastAsync(_claude.Current);
                 break;
 
+            case "openPort": _ports.Open((int)(cmd.Value ?? 0)); break;
+            case "openDownload": _downloads.OpenLast(); break;
+            case "showDownload": _downloads.ShowLast(); break;
+
             default:
                 Log.Warn($"unknown cmd: {cmd.Cmd}");
                 break;
@@ -136,9 +200,13 @@ public sealed class AgentHost : IDisposable
     public void Dispose()
     {
         _cts.Cancel();
+        _foreground?.Dispose();
+        _dialogs.Dispose();
         _discovery.Dispose();
         _server.Dispose();
         _metrics.Dispose();
         _audio.Dispose();
+        _ports.Dispose();
+        _downloads.Dispose();
     }
 }

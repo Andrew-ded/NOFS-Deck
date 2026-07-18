@@ -58,6 +58,11 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             claude = ClaudeUsage(
                 windowTokens = 1_830_000, windowPct = 61, windowResetAt = "21:00",
                 weekTokens = 54_000_000, weekPct = 38, ok = true
+            ),
+            ports = listOf(
+                PortEntry(5000, 1234, "dotnet"),
+                PortEntry(5173, 5678, "node"),
+                PortEntry(48484, 9012, "NofsAgent")
             )
         )
     )
@@ -309,6 +314,9 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
                     else st.claude.copy(windowPct = p)
                 )
             }
+            is DeskCommand.OpenPort -> { /* демо: на ПК нечего открывать */ }
+            DeskCommand.OpenDownload -> { /* демо: открывать нечего */ }
+            DeskCommand.ShowDownload -> { /* демо: показывать нечего */ }
             is DeskCommand.RunBuild -> runDemoBuild()
             DeskCommand.CancelBuild -> {
                 sceneRunning = false

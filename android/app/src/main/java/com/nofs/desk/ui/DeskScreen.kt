@@ -55,10 +55,13 @@ import com.nofs.desk.data.DeskCommand
 import com.nofs.desk.ui.components.BottomPlayerPill
 import com.nofs.desk.ui.components.ClaudeUsageCard
 import com.nofs.desk.ui.components.DeskHeader
+import com.nofs.desk.ui.components.DialogMirrorCard
+import com.nofs.desk.ui.components.DownloadCard
 import com.nofs.desk.ui.components.MacroPanel
 import com.nofs.desk.ui.components.MetricSparkStrip
 import com.nofs.desk.ui.components.MetricsGrid
 import com.nofs.desk.ui.components.PlayerSheet
+import com.nofs.desk.ui.components.PortsCard
 import com.nofs.desk.ui.components.Screensaver
 import com.nofs.desk.ui.components.SettingsDialog
 import com.nofs.desk.ui.components.animatePlayerProgress
@@ -97,6 +100,9 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var metricsCompact by rememberSaveable { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    // Зеркало диалогов ПК: штамп последнего закрытого события —
+    // карточка видна, пока пользователь не закрыл именно ЭТО событие
+    var dialogDismissedAt by remember { mutableLongStateOf(0L) }
     val palette = LightDeskPalette
     val playerProgress = animatePlayerProgress(playerOpen)
 
@@ -232,6 +238,16 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
                         Spacer(Modifier.height(14.dp))
                     }
 
+                    // Порты ПК: кто на каком порту слушает; тап — открыть на ПК.
+                    // Пустой список карточка прячет сама, обёртка — только для Spacer.
+                    if (state.ports.isNotEmpty()) {
+                        PortsCard(
+                            ports = state.ports,
+                            onOpen = { viewModel.send(DeskCommand.OpenPort(it)) }
+                        )
+                        Spacer(Modifier.height(14.dp))
+                    }
+
                     MacroPanel(
                         apps = state.apps,
                         macros = state.macros,
@@ -280,6 +296,22 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
             )
         }
 
+        // Вахтёр загрузок — плашка внизу слева, не мешает пилюле.
+        // Крестик гасит текущую плашку штампом; новое событие (свежий at)
+        // показывает её снова.
+        var downloadDismissedAt by remember { mutableLongStateOf(0L) }
+        DownloadCard(
+            download = state.download,
+            visible = state.download.fileName.isNotBlank() &&
+                state.download.at > downloadDismissedAt,
+            onOpen = { viewModel.send(DeskCommand.OpenDownload) },
+            onShow = { viewModel.send(DeskCommand.ShowDownload) },
+            onDismiss = { downloadDismissedAt = System.currentTimeMillis() },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = 10.dp)
+        )
+
         // Ошибки от агента
         SnackbarHost(
             hostState = snackbarHost,
@@ -294,7 +326,17 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
             )
         }
 
-        // Скринсейвер поверх всего
+        // Зеркало диалогов ПК: ошибка со скрином / прогресс копирования
+        DialogMirrorCard(
+            dialog = state.dialog,
+            visible = state.dialog.at != 0L && state.dialog.at != dialogDismissedAt,
+            onDismiss = { dialogDismissedAt = state.dialog.at },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp)
+        )
+
+        // Скринсейвер поверх всего (сознательно ПОСЛЕ оверлеев: спящий планшет не будим)
         Screensaver(
             clock = state.clock,
             date = state.date,

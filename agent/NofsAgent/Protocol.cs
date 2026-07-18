@@ -154,6 +154,37 @@ public sealed record ClaudeUsageMsg(
     public string Type => "claude";
 }
 
+/// <summary>Слушающий TCP-порт: кто сидит на порту (dotnet на 5000, vite на 5173).</summary>
+public sealed record PortDto(int Port, int Pid, string Process);
+
+/// <summary>Снимок слушающих портов; пуш только при смене набора порт+pid.</summary>
+public sealed record PortsMsg(List<PortDto> Ports)
+{
+    public string Type => "ports";
+}
+
+/// <summary>
+/// Вахтёр загрузок. State "active" — браузер качает: FileName без
+/// temp-расширения, SizeBytes растёт, Path пустой (файла ещё нет).
+/// State "done" — файл готов: Path полный, по нему работают
+/// команды openDownload/showDownload.
+/// </summary>
+public sealed record DownloadMsg(string State, string FileName, long SizeBytes, string Path)
+{
+    public string Type => "download";
+}
+
+/// <summary>
+/// Зеркало диалога ПК. kind = "error": всплыло окно ошибки — Title + скрин
+/// окна (JPEG base64, может быть null, если снять не вышло), ProgressPct = -1.
+/// kind = "copy": прогресс копирования Explorer — ProgressPct 0..100
+/// (100 = диалог закрылся, планшет прячет плашку), ImageBase64 = null.
+/// </summary>
+public sealed record DialogMsg(string Kind, string Title, string? ImageBase64, int ProgressPct)
+{
+    public string Type => "dialog";
+}
+
 // ---------- планшет -> агент ----------
 
 public sealed class CmdMsg

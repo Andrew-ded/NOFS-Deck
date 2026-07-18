@@ -218,6 +218,42 @@ data class ClaudeUsageMsg(
     val ok: Boolean = false
 )
 
+/** Слушающий TCP-порт на ПК: кто на каком порту сидит. Зеркало PortDto/PortsMsg. */
+@Serializable
+data class PortDto(
+    val port: Int,
+    val pid: Int = 0,
+    val process: String = ""
+)
+
+@Serializable
+data class PortsMsg(val ports: List<PortDto> = emptyList())
+
+/**
+ * Вахтёр загрузок. state "active" — браузер качает (sizeBytes растёт,
+ * path пустой); "done" — файл готов (path полный).
+ */
+@Serializable
+data class DownloadMsg(
+    val state: String = "",
+    val fileName: String = "",
+    val sizeBytes: Long = 0,
+    val path: String = ""
+)
+
+/**
+ * Зеркало диалога ПК. kind = "error": окно ошибки — title + скрин (JPEG
+ * base64, null = снять не вышло), progressPct = -1. kind = "copy": прогресс
+ * копирования Explorer 0..100 (100 = диалог закрылся).
+ */
+@Serializable
+data class DialogMsg(
+    val kind: String = "",
+    val title: String = "",
+    val imageBase64: String? = null,
+    val progressPct: Int = -1
+)
+
 // ---------- планшет -> агент ----------
 
 object Cmd {
@@ -269,6 +305,17 @@ object Cmd {
     fun claudeCalibrate(scope: String, percent: Float): JsonObject = buildJsonObject {
         put("type", "cmd"); put("cmd", "claudeCal"); put("id", scope); put("value", percent)
     }
+
+    /** Тап по чипу порта: открыть http://localhost:порт в браузере ПК. */
+    fun openPort(port: Int): JsonObject = buildJsonObject {
+        put("type", "cmd"); put("cmd", "openPort"); put("value", port.toFloat())
+    }
+
+    /** Открыть последний скачанный файл на ПК. */
+    fun openDownload(): JsonObject = simple("openDownload")
+
+    /** Показать последний скачанный файл в Explorer. */
+    fun showDownload(): JsonObject = simple("showDownload")
 }
 
 /** Достаёт поле type из входящего сообщения (или null). */

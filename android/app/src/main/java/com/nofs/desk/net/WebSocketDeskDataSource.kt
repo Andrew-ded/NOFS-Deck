@@ -16,6 +16,8 @@ import com.nofs.desk.data.ConnectionStatus
 import com.nofs.desk.data.DeskCommand
 import com.nofs.desk.data.DeskDataSource
 import com.nofs.desk.data.DeskState
+import com.nofs.desk.data.DialogMirrorState
+import com.nofs.desk.data.DownloadState
 import com.nofs.desk.data.ErrorEvent
 import com.nofs.desk.data.FilePassportState
 import com.nofs.desk.data.GitCommitEntry
@@ -24,6 +26,7 @@ import com.nofs.desk.data.GitHubPullRequest
 import com.nofs.desk.data.Macro
 import com.nofs.desk.data.MediaState
 import com.nofs.desk.data.Metric
+import com.nofs.desk.data.PortEntry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -302,6 +305,39 @@ class WebSocketDeskDataSource(
                     )
                 }
             }
+            "ports" -> {
+                val p = ProtocolJson.decodeFromJsonElement<PortsMsg>(obj)
+                _state.update { st ->
+                    st.copy(ports = p.ports.map { PortEntry(it.port, it.pid, it.process) })
+                }
+            }
+            "download" -> {
+                val d = ProtocolJson.decodeFromJsonElement<DownloadMsg>(obj)
+                _state.update {
+                    it.copy(
+                        download = DownloadState(
+                            state = d.state,
+                            fileName = d.fileName,
+                            sizeBytes = d.sizeBytes,
+                            at = System.currentTimeMillis()
+                        )
+                    )
+                }
+            }
+            "dialog" -> {
+                val d = ProtocolJson.decodeFromJsonElement<DialogMsg>(obj)
+                _state.update {
+                    it.copy(
+                        dialog = DialogMirrorState(
+                            kind = d.kind,
+                            title = d.title,
+                            imageBase64 = d.imageBase64,
+                            progressPct = d.progressPct,
+                            at = System.currentTimeMillis()
+                        )
+                    )
+                }
+            }
             "error" -> {
                 val e = ProtocolJson.decodeFromJsonElement<ErrorMsg>(obj)
                 if (e.message.isNotBlank()) {
@@ -396,6 +432,9 @@ class WebSocketDeskDataSource(
             is DeskCommand.RunBuild -> Cmd.runBuild(command.id)
             DeskCommand.CancelBuild -> Cmd.cancelBuild()
             is DeskCommand.ClaudeCalibrate -> Cmd.claudeCalibrate(command.scope, command.percent)
+            is DeskCommand.OpenPort -> Cmd.openPort(command.port)
+            DeskCommand.OpenDownload -> Cmd.openDownload()
+            DeskCommand.ShowDownload -> Cmd.showDownload()
         }
         ws?.send(json.toString())
     }

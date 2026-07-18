@@ -181,6 +181,37 @@ data class ClaudeUsage(
     val ok: Boolean = false
 )
 
+/** Слушающий порт ПК — чип на карточке «Порты». */
+data class PortEntry(
+    val port: Int,
+    val pid: Int = 0,
+    val process: String = ""
+)
+
+/**
+ * Вахтёр загрузок: транзиентная плашка. fileName пустой = плашки нет —
+ * источник правды для видимости, как у FilePassportState.
+ */
+data class DownloadState(
+    val state: String = "",        // "active" | "done"
+    val fileName: String = "",
+    val sizeBytes: Long = 0,
+    val at: Long = 0L              // штамп прихода — для автозакрытия и dismiss
+)
+
+/**
+ * Зеркало диалога ПК (ошибка/копирование). at — штамп прихода события:
+ * по нему UI решает «свежее или уже закрыто» и перезапускает таймеры.
+ * at == 0 — событий ещё не было, оверлей не показываем.
+ */
+data class DialogMirrorState(
+    val kind: String = "",
+    val title: String = "",
+    val imageBase64: String? = null,
+    val progressPct: Int = -1,
+    val at: Long = 0L
+)
+
 data class DeskState(
     val clock: String = "--:--",
     val date: String = "",
@@ -198,7 +229,10 @@ data class DeskState(
     val daily: DailySummary = DailySummary(),
     val builds: List<BuildOption> = emptyList(),
     val filePassport: FilePassportState = FilePassportState(),
-    val claude: ClaudeUsage = ClaudeUsage()
+    val claude: ClaudeUsage = ClaudeUsage(),
+    val ports: List<PortEntry> = emptyList(),
+    val download: DownloadState = DownloadState(),
+    val dialog: DialogMirrorState = DialogMirrorState()
 )
 
 /** Команды планшета к источнику данных. */
@@ -224,4 +258,10 @@ sealed interface DeskCommand {
     data object CancelBuild : DeskCommand
     /** Калибровка лимитов Claude: scope "window"|"week", percent из приложения Anthropic. */
     data class ClaudeCalibrate(val scope: String, val percent: Float) : DeskCommand
+    /** Тап по чипу порта: открыть localhost:порт в браузере ПК. */
+    data class OpenPort(val port: Int) : DeskCommand
+    /** Открыть последний скачанный файл на ПК. */
+    data object OpenDownload : DeskCommand
+    /** Показать последний скачанный файл в Explorer. */
+    data object ShowDownload : DeskCommand
 }
