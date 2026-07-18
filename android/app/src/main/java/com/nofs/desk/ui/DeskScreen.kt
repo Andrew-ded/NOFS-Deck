@@ -53,6 +53,7 @@ import kotlinx.coroutines.delay
 import com.nofs.desk.DeskViewModel
 import com.nofs.desk.data.DeskCommand
 import com.nofs.desk.ui.components.BottomPlayerPill
+import com.nofs.desk.ui.components.ClaudeUsageCard
 import com.nofs.desk.ui.components.DeskHeader
 import com.nofs.desk.ui.components.MacroPanel
 import com.nofs.desk.ui.components.MetricSparkStrip
@@ -218,6 +219,17 @@ private fun TabletDeskScreen(viewModel: DeskViewModel) {
                             }
                             Spacer(Modifier.height(14.dp))
                         }
+                    }
+
+                    // Лимиты Claude (ccusage на ПК); в демо-режиме — образец
+                    if (state.claude.ok) {
+                        ClaudeUsageCard(
+                            usage = state.claude,
+                            onCalibrate = { scope, pct ->
+                                viewModel.send(DeskCommand.ClaudeCalibrate(scope, pct))
+                            }
+                        )
+                        Spacer(Modifier.height(14.dp))
                     }
 
                     MacroPanel(

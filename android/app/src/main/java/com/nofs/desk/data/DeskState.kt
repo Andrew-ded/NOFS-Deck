@@ -168,6 +168,19 @@ data class PlaytimeState(
     val week: List<PlaytimeEntry> = emptyList()
 )
 
+/**
+ * Лимиты Claude (с ПК, ccusage). pct = -1 — не откалибровано; ok = false —
+ * данных нет (ccusage недоступен), карточка скрыта.
+ */
+data class ClaudeUsage(
+    val windowTokens: Long = 0,
+    val windowPct: Int = -1,
+    val windowResetAt: String = "",
+    val weekTokens: Long = 0,
+    val weekPct: Int = -1,
+    val ok: Boolean = false
+)
+
 data class DeskState(
     val clock: String = "--:--",
     val date: String = "",
@@ -184,7 +197,8 @@ data class DeskState(
     val scene: SceneState = SceneState(),
     val daily: DailySummary = DailySummary(),
     val builds: List<BuildOption> = emptyList(),
-    val filePassport: FilePassportState = FilePassportState()
+    val filePassport: FilePassportState = FilePassportState(),
+    val claude: ClaudeUsage = ClaudeUsage()
 )
 
 /** Команды планшета к источнику данных. */
@@ -208,4 +222,6 @@ sealed interface DeskCommand {
     data class AudioMuteSession(val id: String) : DeskCommand
     data class RunBuild(val id: String) : DeskCommand
     data object CancelBuild : DeskCommand
+    /** Калибровка лимитов Claude: scope "window"|"week", percent из приложения Anthropic. */
+    data class ClaudeCalibrate(val scope: String, val percent: Float) : DeskCommand
 }

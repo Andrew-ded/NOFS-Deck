@@ -6,6 +6,7 @@ import com.nofs.desk.data.AppContext
 import com.nofs.desk.data.AudioSession
 import com.nofs.desk.data.AudioState
 import com.nofs.desk.data.BuildOption
+import com.nofs.desk.data.ClaudeUsage
 import com.nofs.desk.data.DailySummary
 import com.nofs.desk.data.ScenePhase
 import com.nofs.desk.data.SceneState
@@ -286,6 +287,21 @@ class WebSocketDeskDataSource(
                     )
                 }
             }
+            "claude" -> {
+                val c = ProtocolJson.decodeFromJsonElement<ClaudeUsageMsg>(obj)
+                _state.update {
+                    it.copy(
+                        claude = ClaudeUsage(
+                            windowTokens = c.windowTokens,
+                            windowPct = c.windowPct,
+                            windowResetAt = c.windowResetAt,
+                            weekTokens = c.weekTokens,
+                            weekPct = c.weekPct,
+                            ok = c.ok
+                        )
+                    )
+                }
+            }
             "error" -> {
                 val e = ProtocolJson.decodeFromJsonElement<ErrorMsg>(obj)
                 if (e.message.isNotBlank()) {
@@ -379,6 +395,7 @@ class WebSocketDeskDataSource(
             is DeskCommand.AudioMuteSession -> Cmd.audioMuteSession(command.id)
             is DeskCommand.RunBuild -> Cmd.runBuild(command.id)
             DeskCommand.CancelBuild -> Cmd.cancelBuild()
+            is DeskCommand.ClaudeCalibrate -> Cmd.claudeCalibrate(command.scope, command.percent)
         }
         ws?.send(json.toString())
     }

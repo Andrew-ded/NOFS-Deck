@@ -22,6 +22,7 @@ public sealed class AgentHost : IDisposable
     private readonly MacroService _macros;
     private readonly AudioService _audio = new();
     private readonly MacroStateService _macroState;
+    private readonly ClaudeUsageService _claude;
     private string _lastMacroSig = "";
     private readonly CancellationTokenSource _cts = new();
 
@@ -34,6 +35,7 @@ public sealed class AgentHost : IDisposable
         _context = new ContextService(config.Apps);
         _macros = new MacroService(config.Macros);
         _macroState = new MacroStateService(_audio, _media);
+        _claude = new ClaudeUsageService(config);
 
         _server = new WsServer(config.Port);
         _server.CommandReceived += cmd => _ = HandleCommandAsync(cmd);
@@ -49,6 +51,7 @@ public sealed class AgentHost : IDisposable
         _ = LoopAsync(1000, PushFastAsync);       // метрики + медиа
         _ = LoopAsync(500, PushContextAsync);     // активное окно
         _ = LoopAsync(250, PushMacroStateAsync);  // рефлективные кнопки: подсветка по факту ПК
+        _ = LoopAsync(60_000, PushClaudeAsync);   // лимиты Claude (ccusage раз в минуту)
         Log.Info($"agent up (core): ws://0.0.0.0:{_config.Port}/ws, discovery :{_config.DiscoveryPort}");
     }
 
@@ -79,6 +82,11 @@ public sealed class AgentHost : IDisposable
         await _server.BroadcastAsync(_context.Read());
     }
 
+    private async Task PushClaudeAsync()
+    {
+        await _server.BroadcastAsync(_claude.Tick());
+    }
+
     /// <summary>Рефлективные кнопки: если сменилось хоть одно отражаемое состояние — пушим макросы.</summary>
     private async Task PushMacroStateAsync()
     {
@@ -97,6 +105,7 @@ public sealed class AgentHost : IDisposable
         await _server.SendAsync(clientId, _context.Read());
         await _server.SendAsync(clientId, _metrics.Read());
         await _server.SendAsync(clientId, await _media.ReadAsync(forceArt: true));
+        await _server.SendAsync(clientId, _claude.Tick());
     }
 
     // ---------- команды планшета ----------
@@ -112,6 +121,11 @@ public sealed class AgentHost : IDisposable
 
             case "runMacro": if (cmd.Id != null) _macros.Run(cmd.Id); break;
             case "focusApp": if (cmd.Id != null) _context.FocusApp(cmd.Id); break;
+
+            case "claudeCal":
+                _claude.Calibrate(cmd.Id ?? "window", cmd.Value ?? 0f);
+                await _server.BroadcastAsync(_claude.Current);
+                break;
 
             default:
                 Log.Warn($"unknown cmd: {cmd.Cmd}");

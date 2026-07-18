@@ -54,6 +54,10 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
             builds = listOf(
                 BuildOption("android", "Gradle · assembleDebug"),
                 BuildOption("dotnet", "dotnet build")
+            ),
+            claude = ClaudeUsage(
+                windowTokens = 1_830_000, windowPct = 61, windowResetAt = "21:00",
+                weekTokens = 54_000_000, weekPct = 38, ok = true
             )
         )
     )
@@ -296,6 +300,14 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
                 st.copy(audio = st.audio.copy(sessions = st.audio.sessions.map {
                     if (it.id == command.id) it.copy(volume = command.volume, muted = false) else it
                 }))
+            }
+            is DeskCommand.ClaudeCalibrate -> _state.update { st ->
+                // Демо: введённый процент сразу становится показанным
+                val p = command.percent.toInt().coerceIn(0, 100)
+                st.copy(
+                    claude = if (command.scope == "week") st.claude.copy(weekPct = p)
+                    else st.claude.copy(windowPct = p)
+                )
             }
             is DeskCommand.RunBuild -> runDemoBuild()
             DeskCommand.CancelBuild -> {

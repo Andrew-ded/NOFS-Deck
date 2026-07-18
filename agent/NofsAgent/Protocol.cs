@@ -142,6 +142,18 @@ public sealed record FilePassportMsg(
     public string Type => "filePassport";
 }
 
+/// <summary>
+/// Лимиты Claude: токены активного 5-часового окна + сумма за 7 дней.
+/// Pct = -1 — не откалибровано (лимит неизвестен). Ok = false — ccusage
+/// недоступен/упал, планшет показывает «нет данных».
+/// </summary>
+public sealed record ClaudeUsageMsg(
+    long WindowTokens, int WindowPct, string WindowResetAt,
+    long WeekTokens, int WeekPct, bool Ok)
+{
+    public string Type => "claude";
+}
+
 // ---------- планшет -> агент ----------
 
 public sealed class CmdMsg
