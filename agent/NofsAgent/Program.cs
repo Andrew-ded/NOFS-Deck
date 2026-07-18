@@ -66,4 +66,11 @@ internal static class Program
             if (!resp.IsSuccessStatusCode)
                 throw new Exception($"HTTP {(int)resp.StatusCode}");
         }
-        catch (Excep
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Агент не отвечает — запусти NOFS Agent и повтори.\n({ex.Message})",
+                "NOFS Agent", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+}

@@ -48,4 +48,8 @@
     { "id": "studio.logcat","label": "Logcat",       "icon": "terminal","accent": "SAND",    "action": "keys:alt+6",         "app": "studio" },
 
     { "id": "chrome.tab",   "label": "Новая вкладка","icon": "tab",       "accent": "SKY",     "action": "keys:ctrl+t",       "app": "chrome" },
-    { "id": 
+    { "id": "chrome.retab", "label": "Вернуть вкладку","icon": "sync",    "accent": "SAGE",    "action": "keys:ctrl+shift+t", "app": "chrome" },
+    { "id": "chrome.inc",   "label": "Инкогнито",    "icon": "incognito", "accent": "LAVENDER","action": "keys:ctrl+shift+n", "app": "chrome" },
+    { "id": "chrome.dev",   "label": "DevTools",     "icon": "code",      "accent": "SAND",    "action": "keys:f12",          "app": "chrome" }
+  ]
+}

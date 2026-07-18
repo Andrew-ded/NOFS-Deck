@@ -307,7 +307,6 @@ class FakeDeskDataSource(private val scope: CoroutineScope) : DeskDataSource {
                     if (it.id == command.id) it.copy(muted = !it.muted) else it
                 }))
             }
-            DeskCommand.RemoteTypeStop -> { /* демо: режима нет */ }
             DeskCommand.GitHubRefresh -> scope.launch {
                 _state.update { it.copy(git = it.git.copy(githubLoading = true)) }
                 delay(700)

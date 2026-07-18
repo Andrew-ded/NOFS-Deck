@@ -18,7 +18,6 @@ public sealed class Config
     [JsonPropertyName("passportAnalyzer")] public string PassportAnalyzer { get; set; } = "auto";
     /// <summary>Доп. корни для поиска активного файла (кроме git-папки и авто-проектов IDE).</summary>
     [JsonPropertyName("passportRoots")] public List<string> PassportRoots { get; set; } = new();
-    [JsonPropertyName("remoteType")] public RemoteTypeConfig RemoteType { get; set; } = new();
 
     public static string FilePath =>
         Path.Combine(AppContext.BaseDirectory, "config.json");
@@ -97,15 +96,6 @@ public sealed class BuildConfig
     [JsonPropertyName("cwd")] public string Cwd { get; set; } = "";
     /// <summary>"studio" | "rider" — брать путь из текущего открытого проекта IDE.</summary>
     [JsonPropertyName("ide")] public string Ide { get; set; } = "";
-}
-
-public sealed class RemoteTypeConfig
-{
-    /// <summary>
-    /// Клавиша-тоггл режима «клавиатура ПК → планшет»: scrolllock (по умолчанию,
-    /// физически почти не используется) | pause | f13 | f14 | f15.
-    /// </summary>
-    [JsonPropertyName("hotkey")] public string Hotkey { get; set; } = "scrolllock";
 }
 
 public sealed class MacroConfig
